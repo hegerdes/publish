@@ -10,7 +10,7 @@ permissions:
   contents: write
 
 jobs:
-  artifact:
+  Build-Release:
     runs-on: ubuntu-latest
     steps:
 
@@ -46,10 +46,16 @@ jobs:
         run: |
           set -ex
           source $HOME/.wasmedge/env
-          cp scripts/crun-release.sh crun/build-aux/release.sh
           cd crun
-          SKIP_CHECKS=1 SKIP_GPG=1 build-aux/release.sh
-          mv release-* releases
+          test -e Makefile && make distclean
+          ./autogen.sh
+          ./configure --with-wasmedge
+          make -j $(nproc)
+          mkdir wasmlibs
+          cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0.0.1
+          ln -s wasmlibs/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0
+          ln -s wasmlibs/libwasmedge.so.0 wasmlibs/libwasmedge.so
+          tar czvf "crun-$(git rev-parse --short HEAD).tar.gz" crun COPYING NEWS README.md wasmlibs/*
           echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           cd $GITHUB_WORKSPACE
 
@@ -57,12 +63,15 @@ jobs:
         id: release
         uses: softprops/action-gh-release@v1
         with:
-          name: Crun with wasm @${{ steps.build_crun.outputs.CRUN_REPO_HASH }}
+          name: Crun with wasm@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}
           tag_name: default
           body: |
             This is an unofficial periodic release of crun
 
             It is build with wasm support and only for the x86 arch.
-            This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/{{ steps.build_crun.outputs.CRUN_REPO_HASH }})
+            This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.build_crun.outputs.CRUN_REPO_HASH }})
+
+            The libs in the archive need to be added to your system LIBs PATH.
+            See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for a how-to
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: crun/releases/*.gz
+          files: crun/${{ steps.build_crun.outputs.CRUN_REPO_HASH }}.tar.gz
