@@ -1,0 +1,64 @@
+name: Artifact
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  artifact:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Install deps
+        id: install_build_deps
+        run: |
+          # Install dev deps
+          sudo apt-get update
+          sudo apt-get install -y \
+            make git gcc build-essential pkgconf libtool libsystemd-dev \
+            libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev \
+            go-md2man libtool autoconf python3 automake
+
+      - name: Setup wasmedge
+        id: install_wasm
+        run: |
+          # Install dev deps
+          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
+
+      - name: Setup this Repo
+        id: repo_scripts
+        uses: actions/checkout@v3
+
+      - name: Setup crun Repo
+        uses: actions/checkout@v3
+        id: repo_crun
+        with:
+          repository: containers/crun
+          path: crun
+
+      - name: Run crun build with wasm
+        id: build_crun
+        run: |
+          set -ex
+          source $HOME/.wasmedge/env
+          cp scripts/crun-release.sh crun/build-aux/release.sh
+          cd crun
+          SKIP_CHECKS=1 SKIP_GPG=1 build-aux/release.sh
+          mv release-* releases
+          run: echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          cd $GITHUB_WORKSPACE
+
+      - name: Release
+        id: release
+        uses: softprops/action-gh-release@v1
+        with:
+          body: |
+            This is an unofficial periodic release of crun
+
+            It is build with wasm support and only for the x86 arch.
+            This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/{{ steps.build_crun.outputs.CRUN_REPO_HASH }})
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: crun/releases/*.gz
