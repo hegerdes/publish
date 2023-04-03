@@ -1,8 +1,10 @@
-name: Artifact
+name: Build and Release WASM-CRUN
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: '0 0 1 * *'
 
 permissions:
   contents: write
@@ -55,6 +57,8 @@ jobs:
         id: release
         uses: softprops/action-gh-release@v1
         with:
+          name: Crun with wasm @${{ steps.build_crun.outputs.CRUN_REPO_HASH }}
+          tag_name: default
           body: |
             This is an unofficial periodic release of crun
 
