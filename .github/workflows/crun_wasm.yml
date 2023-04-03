@@ -72,6 +72,6 @@ jobs:
             This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.build_crun.outputs.CRUN_REPO_HASH }})
 
             The libs in the archive need to be added to your system LIBs PATH.
-            See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for a how-to
+            See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
           token: ${{ secrets.GITHUB_TOKEN }}
-          files: crun/${{ steps.build_crun.outputs.CRUN_REPO_HASH }}.tar.gz
+          files: crun/crun-${{ steps.build_crun.outputs.CRUN_REPO_HASH }}.tar.gz
