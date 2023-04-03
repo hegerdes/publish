@@ -48,7 +48,7 @@ jobs:
           cd crun
           SKIP_CHECKS=1 SKIP_GPG=1 build-aux/release.sh
           mv release-* releases
-          run: echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           cd $GITHUB_WORKSPACE
 
       - name: Release
