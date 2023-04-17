@@ -23,20 +23,22 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Create artifact dir
+        run: mkdir artifacts
+
       - name: Build
         uses: docker/build-push-action@v4
         with:
           load: true
           context: scripts
           file: scripts/Dockerfile
-          tags: wasmcrun:latest
+          tags: amd64/wasmcrun:latest
           platforms: linux/amd64
-          # platforms: linux/amd64,linux/arm64
 
       - name: Inspect
         run: |
           docker image inspect wasmcrun:latest
-          docker run --rm -t wasmcrun uname -m
+          docker run --rm -v artifacts:/export amd64/wasmcrun uname -m && cp /builder/*.tar.gz /export/
 
       - name: Build
         uses: docker/build-push-action@v4
@@ -44,10 +46,33 @@ jobs:
           load: true
           context: scripts
           file: scripts/Dockerfile
-          tags: wasmcrun:latest
+          tags: arm64/wasmcrun:latest
           platforms: linux/arm64
 
       - name: Inspect
         run: |
           docker image inspect wasmcrun:latest
-          docker run --rm -t arm64v8/wasmcrun uname -m
+          docker run --rm -v artifacts:/export arm64v8/wasmcrun uname -m && cp /builder/*.tar.gz /export/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm-crun
+          path: artifacts/*
+
+  #     - name: Release
+  #       id: release
+  #       uses: softprops/action-gh-release@v1
+  #       with:
+  #         name: Crun with wasm@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}
+  #         tag_name: default
+  #         body: |
+  #           This is an unofficial periodic release of crun
+
+  #           It is build with wasm support and only for the x86 arch.
+  #           This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.build_crun.outputs.CRUN_REPO_HASH }})
+
+  #           The libs in the archive need to be added to your system LIBs PATH.
+  #           See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
+  #         token: ${{ secrets.GITHUB_TOKEN }}
+  #         files: crun/crun-${{ steps.build_crun.outputs.CRUN_REPO_HASH }}.tar.gz

@@ -23,6 +23,6 @@ RUN source $HOME/.wasmedge/env \
     && cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0.0.1 \
     && ln -s wasmlibs/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0 \
     && ln -s wasmlibs/libwasmedge.so.0 wasmlibs/libwasmedge.so \
-    && tar czvf "crun-$(git rev-parse --short HEAD).tar.gz" crun COPYING NEWS README.md wasmlibs/*
+    && tar czvf "crun-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" crun COPYING NEWS README.md wasmlibs/*
 
 RUN cp crun/crun*.tar.gz .
