@@ -7,6 +7,9 @@ SKIP_CHECKS=${SKIP_CHECKS:-}
 
 NIX_IMAGE=${NIX_IMAGE:-nixos/nix:2.12.0}
 
+# Load wasm
+source $HOME/.wasmedge/env
+
 test -e Makefile && make distclean
 
 ./autogen.sh
