@@ -45,13 +45,14 @@ jobs:
         run: |
           cp scripts/crun-release.sh crun/build-aux/release.sh
       - run: |
+          cd crun
           source $HOME/.wasmedge/env
           if [[ -z $(ls -A /nix) ]]; then sudo docker run --rm --privileged -v /:/mnt nixos/nix:2.12.0 cp -rfT /nix /mnt/nix; fi
           sudo RUNTIME=docker SKIP_CHECKS=1 SKIP_GPG=1 build-aux/release.sh
 
       - run: |
           sudo mv release-* /tmp/artifact
-          LS -LS
+          ls -la
           sudo mv /tmp/artifact/crun-*-linux-amd64 /tmp/artifact/crun-linux-amd64
           sudo mv /tmp/artifact/crun-*-linux-arm64 /tmp/artifact/crun-linux-arm64
           sudo mv /tmp/artifact/crun-*-linux-ppc64le /tmp/artifact/crun-linux-ppc64le
