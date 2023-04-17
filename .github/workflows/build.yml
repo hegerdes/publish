@@ -17,6 +17,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
@@ -27,10 +30,24 @@ jobs:
           context: scripts
           file: scripts/Dockerfile
           tags: wasmcrun:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          # platforms: linux/amd64,linux/arm64
 
       - name: Inspect
         run: |
           docker image inspect wasmcrun:latest
           docker run --rm -t wasmcrun uname -m
+
+      - name: Build
+        uses: docker/build-push-action@v4
+        with:
+          load: true
+          context: scripts
+          file: scripts/Dockerfile
+          tags: wasmcrun:latest
+          platforms: linux/arm64
+
+      - name: Inspect
+        run: |
+          docker image inspect wasmcrun:latest
           docker run --rm -t arm64v8/wasmcrun uname -m
