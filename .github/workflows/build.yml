@@ -34,6 +34,12 @@ jobs:
           file: scripts/Dockerfile
           tags: amd64/wasmcrun:latest
           platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
 
       - name: Inspect
         run: |
@@ -48,10 +54,6 @@ jobs:
           file: scripts/Dockerfile
           tags: arm64/wasmcrun:latest
           platforms: linux/arm64
-
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
 
       - name: Inspect
         run: |
