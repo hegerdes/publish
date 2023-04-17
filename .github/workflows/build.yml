@@ -37,7 +37,7 @@ jobs:
 
       - name: Inspect
         run: |
-          docker image inspect wasmcrun:latest
+          docker image inspect amd64/wasmcrun:latest
           docker run --rm -v artifacts:/export amd64/wasmcrun uname -m && cp /builder/*.tar.gz /export/
 
       - name: Build
@@ -51,7 +51,7 @@ jobs:
 
       - name: Inspect
         run: |
-          docker image inspect wasmcrun:latest
+          docker image inspect arm64v8/wasmcrun:latest
           docker run --rm -v artifacts:/export arm64v8/wasmcrun uname -m && cp /builder/*.tar.gz /export/
 
       - name: Upload artifact
