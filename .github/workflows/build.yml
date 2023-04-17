@@ -14,106 +14,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - name: Install deps
-        id: install_build_deps
-        run: |
-          # Install dev deps
-          sudo apt-get update
-          sudo apt-get install -y \
-            make git gcc build-essential pkgconf libtool libsystemd-dev \
-            libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev \
-            curl go-md2man libtool autoconf python3 automake
-
-      - name: Setup wasmedge
-        id: install_wasm
-        run: |
-          # Install dev deps
-          curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
-
-      - name: Setup this Repo
-        id: repo_scripts
+      - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Setup crun Repo
-        uses: actions/checkout@v3
-        id: repo_crun
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build
+        uses: docker/build-push-action@v4
         with:
-          repository: containers/crun
-          path: crun
+          context: scripts
+          load: true
+          tags: wasmcrun:latest
+          platforms: linux/amd64,linux/arm64
 
-      - name: Copy build script
+      - name: Inspect
         run: |
-          cp scripts/crun-release.sh crun/build-aux/release.sh
-      - run: |
-          cd crun
-          if [[ -z $(ls -A /nix) ]]; then sudo docker run --rm --privileged -v /:/mnt nixos/nix:2.12.0 cp -rfT /nix /mnt/nix; fi
-          sudo RUNTIME=docker SKIP_CHECKS=1 SKIP_GPG=1 build-aux/release.sh
-
-      - run: |
-          cd crun
-          sudo mv release-* /tmp/artifact
-          ls -la /tmp/artifact
-          sudo mv /tmp/artifact/crun-*-linux-amd64 /tmp/artifact/crun-linux-amd64
-          sudo mv /tmp/artifact/crun-*-linux-arm64 /tmp/artifact/crun-linux-arm64
-          sudo mv /tmp/artifact/crun-*-linux-ppc64le /tmp/artifact/crun-linux-ppc64le
-          (cd /tmp/artifact; sha256sum * | sudo tee CHECKSUMS)
-
-  #     - name: Run crun build with wasm
-  #       id: build_crun
-  #       run: |
-  #         set -ex
-  #         source $HOME/.wasmedge/env
-  #         cd crun
-  #         test -e Makefile && make distclean
-  #         ./autogen.sh
-  #         ./configure --with-wasmedge
-  #         make -j $(nproc)
-  #         mkdir wasmlibs
-  #         cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0.0.1
-  #         ln -s wasmlibs/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0
-  #         ln -s wasmlibs/libwasmedge.so.0 wasmlibs/libwasmedge.so
-  #         tar czvf "crun-$(git rev-parse --short HEAD).tar.gz" crun COPYING NEWS README.md wasmlibs/*
-  #         echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-  #         cd $GITHUB_WORKSPACE
-
-  #     - name: Release
-  #       id: release
-  #       uses: softprops/action-gh-release@v1
-  #       with:
-  #         name: Crun with wasm@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}
-  #         tag_name: default
-  #         body: |
-  #           This is an unofficial periodic release of crun
-
-  #           It is build with wasm support and only for the x86 arch.
-  #           This release was build at [crun@${{ steps.build_crun.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.build_crun.outputs.CRUN_REPO_HASH }})
-
-  #           The libs in the archive need to be added to your system LIBs PATH.
-  #           See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
-  #         token: ${{ secrets.GITHUB_TOKEN }}
-  #         files: crun/crun-${{ steps.build_crun.outputs.CRUN_REPO_HASH }}.tar.gz
-
-
-
-  # build-by-docker:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v2
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v2
-
-  #     - name: Build and push
-  #       uses: docker/build-push-action@v3.3.0
-  #       with:
-  #         push: true
-  #         sbom: true
-  #         platforms: linux/amd64,linux/arm64,linux/arm/v7
-  #         tags: |
-  #           hegerdes/palybooks:${{ github.sha }}
-  #           hegerdes/palybooks:latest
-
+          docker image inspect wasmcrun:latest
+          docker run --rm -t wasmcrun uname -m
+          docker run --rm -t arm64v8/wasmcrun uname -m
