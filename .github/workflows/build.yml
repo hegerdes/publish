@@ -1,0 +1,94 @@
+name: Build and Release WASM-CRUN
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 1 * *'
+
+permissions:
+  contents: write
+
+jobs:
+  Build-Release:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Checkout crun
+        uses: actions/checkout@v3
+        with:
+          repository: containers/crun
+          path: crun
+
+      - name: Get crun hash
+        id: crun_hash
+        run: |
+          cd crun
+          echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Create artifact dir
+        run: mkdir -p artifacts
+
+      - name: Build
+        uses: docker/build-push-action@v4
+        with:
+          load: true
+          context: scripts
+          file: scripts/Dockerfile
+          tags: amd64/wasmcrun:latest
+          platforms: linux/amd64
+
+      - name: Inspect
+        run: |
+          docker image inspect amd64/wasmcrun:latest
+          docker run --rm --platform linux/amd64 -v $GITHUB_WORKSPACE/artifacts:/export amd64/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
+
+      - name: Build
+        uses: docker/build-push-action@v4
+        with:
+          load: true
+          context: scripts
+          file: scripts/Dockerfile
+          tags: arm64/wasmcrun:latest
+          platforms: linux/arm64
+
+      - name: Inspect
+        run: |
+          docker image inspect arm64/wasmcrun:latest
+          docker run --rm --platform linux/arm64 -v $GITHUB_WORKSPACE/artifacts:/export arm64/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: wasm-crun
+          path: artifacts/*
+          retention-days: 60
+
+      - name: Release
+        id: release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}
+          tag_name: default
+          body: |
+            These are unofficial periodic release of different tools with extra configuration than the official ons.
+            Included are:
+              * [crun](https://github.com/containers/crun)
+
+            ## Crun
+            It is build with wasm support and only for the amd64/arm64 arch.
+            This release was build at [crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.crun_hash.outputs.CRUN_REPO_HASH }})
+
+            The libs in the archive need to be added to your system LIBs PATH.
+            See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          files: artifacts/*
