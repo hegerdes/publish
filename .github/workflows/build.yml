@@ -49,6 +49,10 @@ jobs:
           tags: arm64/wasmcrun:latest
           platforms: linux/arm64
 
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+
       - name: Inspect
         run: |
           docker image inspect arm64v8/wasmcrun:latest
