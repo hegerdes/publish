@@ -37,14 +37,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Setup tmate session
-        uses: mxschmitt/action-tmate@v3
-        timeout-minutes: 15
-
       - name: Inspect
         run: |
           docker image inspect amd64/wasmcrun:latest
-          docker run --rm -v artifacts:/export amd64/wasmcrun cp /builder/*.tar.gz /export/
+          docker run --rm -v artifacts:/export amd64/wasmcrun bash -c 'cp /builder/*.tar.gz /export/'
 
       - name: Build
         uses: docker/build-push-action@v4
@@ -58,7 +54,7 @@ jobs:
       - name: Inspect
         run: |
           docker image inspect arm64v8/wasmcrun:latest
-          docker run --rm -v artifacts:/export arm64v8/wasmcrun cp /builder/*.tar.gz /export/
+          docker run --rm -v artifacts:/export arm64v8/wasmcrun bash -c 'cp /builder/*.tar.gz /export/'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
