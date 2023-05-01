@@ -11,8 +11,11 @@ permissions:
   contents: write
 
 jobs:
-  Build-Release:
+  Build-Crun:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [linux/amd64, linux/arm64]
     steps:
 
       - name: Checkout
@@ -46,42 +49,59 @@ jobs:
           load: true
           context: scripts
           file: scripts/Dockerfile
-          tags: amd64/wasmcrun:latest
-          platforms: linux/amd64
+          tags: ${{ matrix.arch }}/wasmcrun:latest
+          platforms: ${{ matrix.arch }}
 
       - name: Inspect
         run: |
-          docker image inspect amd64/wasmcrun:latest
-          docker run --rm --platform linux/amd64 -v $GITHUB_WORKSPACE/artifacts:/export amd64/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
-
-      - name: Build
-        uses: docker/build-push-action@v4
-        with:
-          load: true
-          context: scripts
-          file: scripts/Dockerfile
-          tags: arm64/wasmcrun:latest
-          platforms: linux/arm64
-
-      - name: Inspect
-        run: |
-          docker image inspect arm64/wasmcrun:latest
-          docker run --rm --platform linux/arm64 -v $GITHUB_WORKSPACE/artifacts:/export arm64/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
+          docker image inspect ${{ matrix.arch }}/wasmcrun:latest
+          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: wasm-crun
+          name: wasm-crun-${{ matrix.arch }}
           path: artifacts/*
           retention-days: 60
 
+  Release:
+    runs-on: ubuntu-latest
+    needs: [Build-Crun]
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Checkout crun
+        uses: actions/checkout@v3
+        with:
+          repository: containers/crun
+          path: crun
+
+      - name: Get meta data
+        id: metadata
+        run: |
+          mkdir -p artifacts
+          echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          cd crun
+          echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          cd $GITHUB_WORKSPACE
+
+      - name: Download artifatcs
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts/*
+
+      - name: List artifacts
+        run: ls -la artifacts/*
+
       - name: Release
         id: release
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name == 'schedule' }} || startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v1
         with:
-          name: "Artifacts: Crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}"
-          tag_name: v${{ steps.crun_hash.outputs.RELEASE_VERSION }}
+          name: "Artifacts: Crun@ ${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
+          tag_name: v${{ steps.metadata.outputs.RELEASE_VERSION }}
           body: |
             These are unofficial periodic release of different tools with extra configuration than the official ons.
             Included are:
@@ -89,9 +109,10 @@ jobs:
 
             ## Crun
             It is build with wasm support and only for the amd64/arm64 arch.
-            This release was build at [crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.crun_hash.outputs.CRUN_REPO_HASH }})
+            This release was build at [crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.crun_hash.outputs.CRUN_REPO_HASH }})
 
             The libs in the archive need to be added to your system LIBs PATH.
             See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
+            The package libyajl2 is requiered
           token: ${{ secrets.GITHUB_TOKEN }}
           files: artifacts/*

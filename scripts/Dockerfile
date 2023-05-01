@@ -3,7 +3,7 @@ FROM debian:bullseye
 # Install dev deps
 RUN apt-get update && apt-get install -y \
     make curl git gcc build-essential pkgconf libtool libsystemd-dev \
-    libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev \
+    libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev libyajl2 \
     libprotobuf-c-dev protobuf-c-compiler protobuf-compiler \
     python3-protobuf go-md2man libtool autoconf python3 automake \
     golang-github-checkpoint-restore-go-criu-dev
@@ -14,7 +14,8 @@ ARG CrunVersion=main
 
 # Install wasmedge
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
-RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash
+RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -e all
+# RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -e all -v 0.11.2
 
 WORKDIR /builder
 RUN git clone --branch ${CrunVersion} https://github.com/containers/crun.git
