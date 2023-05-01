@@ -78,7 +78,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           name: Crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}
-          tag_name: default
+          tag_name: "2023.05.1"
           body: |
             These are unofficial periodic release of different tools with extra configuration than the official ons.
             Included are:
