@@ -94,15 +94,20 @@ jobs:
           path: artifacts/*
 
       - name: List artifacts
-        run: ls -la artifacts/*
+        working-directory: artifacts
+        run: |
+          ls -la
+          unzip -o "wasm-crun*"
+          ls -la
 
       - name: Release
         id: release
-        if: ${{ github.event_name == 'schedule' }} || startsWith(github.ref, 'refs/tags/v')
+        if: ${{ github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v1
         with:
           name: "Artifacts: Crun@ ${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
           tag_name: v${{ steps.metadata.outputs.RELEASE_VERSION }}
+          fail_on_unmatched_files: true
           body: |
             These are unofficial periodic release of different tools with extra configuration than the official ons.
             Included are:
@@ -110,10 +115,10 @@ jobs:
 
             ## Crun
             It is build with wasm support and only for the amd64/arm64 arch.
-            This release was build at [crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.crun_hash.outputs.CRUN_REPO_HASH }})
+            This release was build at [crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.metadata.outputs.CRUN_REPO_HASH }})
 
             The libs in the archive need to be added to your system LIBs PATH.
             See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
-            The package libyajl2 is requiered
+            Also the package libyajl2 is requiered.
           token: ${{ secrets.GITHUB_TOKEN }}
           files: artifacts/*

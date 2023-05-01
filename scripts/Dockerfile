@@ -14,6 +14,7 @@ ARG CrunVersion=main
 
 # Install wasmedge
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+# See https://wasmedge.org/book/en/quick_start/install.html
 RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -e all
 # RUN curl -sSf https://raw.githubusercontent.com/WasmEdge/WasmEdge/master/utils/install.sh | bash -s -- -e all -v 0.11.2
 
