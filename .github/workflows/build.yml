@@ -97,11 +97,7 @@ jobs:
         working-directory: artifacts
         run: |
           ls -la
-          for i in wasm-crun*; do
-            echo "Found ${i}"
-            unzip -n $i
-            rm $i
-          done
+          for i in wasm-crun*; do echo "Found ${i}"; mv $i/*.tar.gz .; rm -rf $i; done
           ls -la
 
       - name: Release
