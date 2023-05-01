@@ -4,7 +4,9 @@ FROM debian:bullseye
 RUN apt-get update && apt-get install -y \
     make curl git gcc build-essential pkgconf libtool libsystemd-dev \
     libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev \
-    go-md2man libtool autoconf python3 automake
+    libprotobuf-c-dev protobuf-c-compiler protobuf-compiler \
+    python3-protobuf go-md2man libtool autoconf python3 automake \
+    golang-github-checkpoint-restore-go-criu-dev
 
 # Build Args
 ARG WasmEdgeApiVersion=2
@@ -21,6 +23,7 @@ RUN source $HOME/.wasmedge/env \
     && ./autogen.sh \
     && ./configure --with-wasmedge \
     && make -j $(nproc) \
+    && ./crun --version \
     && mkdir -p wasmlibs \
     && cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.0.0.${WasmEdgeApiVersion} \
     && ln -s wasmlibs/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0 \

@@ -2,9 +2,7 @@ name: Build and Release WASM-CRUN
 
 on:
   push:
-    branches: [main]
-  schedule:
-    - cron: '0 0 1 * *'
+    tags: ['*']
 
 permissions:
   contents: write
@@ -31,6 +29,7 @@ jobs:
         run: |
           cd crun
           echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -77,8 +76,8 @@ jobs:
         id: release
         uses: softprops/action-gh-release@v1
         with:
-          name: Crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}
-          tag_name: "2023.05.1"
+          name: "Artifacts: Crun@${{ steps.crun_hash.outputs.CRUN_REPO_HASH }}"
+          tag_name: v${{ steps.crun_hash.outputs.RELEASE_VERSION }}
           body: |
             These are unofficial periodic release of different tools with extra configuration than the official ons.
             Included are:

@@ -1,0 +1,28 @@
+name: Build and Release WASM-CRUN
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 0 1 * *'
+
+permissions:
+  contents: write
+
+jobs:
+  Tag:
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Get Date
+        id: tag_date
+        run: echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+
+      - name: Tag
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          custom_tag: ${{ steps.tag_date.outputs.RELEASE_VERSION }}
