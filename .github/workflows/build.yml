@@ -97,8 +97,11 @@ jobs:
         working-directory: artifacts
         run: |
           ls -la
-          find . -maxdepth 1 -name "wasm-crun*" -printf '%f\n'
-          find -maxdepth 1 -name "wasm-crun*" -printf '%f\n' -exec /usr/bin/unzip -n {} \; -delete
+          for i in wasm-crun*; do
+            echo "Found ${i}"
+            unzip -n $i
+            rm $i
+          done
           ls -la
 
       - name: Release
