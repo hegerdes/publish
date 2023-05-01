@@ -31,11 +31,12 @@ jobs:
           path: crun
 
       - name: Get crun hash
-        id: crun_hash
+        id: metadata
         run: |
           cd crun
           echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_ARTIFACT=$(echo ${{ matrix.arch }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -60,7 +61,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:
-          name: wasm-crun-${{ matrix.arch }}
+          name: wasm-crun-${{ steps.metadata.outputs.RELEASE_ARTIFACT }}
           path: artifacts/*
           retention-days: 60
 
