@@ -24,11 +24,11 @@ RUN source $HOME/.wasmedge/env \
     && ./autogen.sh \
     && ./configure --with-wasmedge \
     && make -j $(nproc) \
-    && ./crun --version \
     && mkdir -p wasmlibs \
     && cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.0.0.${WasmEdgeApiVersion} \
     && ln -s wasmlibs/libwasmedge.so.0.0.1 wasmlibs/libwasmedge.so.0 \
     && ln -s wasmlibs/libwasmedge.so.0 wasmlibs/libwasmedge.so \
-    && tar czvf "crun-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" crun COPYING NEWS README.md wasmlibs/*
+    && tar czvf "crun-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" crun COPYING NEWS README.md wasmlibs/* \
+    && if [ "$(uname -m)" = "x86_64" ]; then ./crun --version; fi
 
 RUN cp crun/crun*.tar.gz .
