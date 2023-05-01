@@ -97,8 +97,8 @@ jobs:
         working-directory: artifacts
         run: |
           ls -la
-          find . -maxdepth 1 -name "wasm-crun*"
-          find . -maxdepth 1 -name "wasm-crun*" -exec /usr/bin/unzip -n {} \; -delete
+          find . -maxdepth 1 -name "wasm-crun*" -printf '%f\n'
+          find -maxdepth 1 -name "wasm-crun*" -printf '%f\n' -exec /usr/bin/unzip -n {} \; -delete
           ls -la
 
       - name: Release
@@ -106,7 +106,7 @@ jobs:
         if: ${{ github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v') }}
         uses: softprops/action-gh-release@v1
         with:
-          name: "Artifacts: Crun@ ${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
+          name: "Artifacts: Crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
           tag_name: v${{ steps.metadata.outputs.RELEASE_VERSION }}
           fail_on_unmatched_files: true
           body: |
