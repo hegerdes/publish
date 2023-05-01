@@ -91,13 +91,13 @@ jobs:
       - name: Download artifatcs
         uses: actions/download-artifact@v3
         with:
-          path: artifacts/*
+          path: artifacts
 
       - name: List artifacts
         working-directory: artifacts
         run: |
           ls -la
-          unzip -o "wasm-crun*"
+          find . -depth -name 'wasm-crun*' -exec /usr/bin/unzip -o -n {} \; -delete
           ls -la
 
       - name: Release
