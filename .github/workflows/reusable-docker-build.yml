@@ -1,0 +1,220 @@
+name: Docker-Build-and-Sign
+
+on:
+  workflow_call:
+    inputs:
+      build-repo:
+        description: "The repo to clone and build"
+        default: ${{ github.repository }}
+        type: string
+        required: false
+      build-context:
+        description: "The build context path"
+        default: ${{ github.workspace }}
+        type: string
+        required: false
+      build-dockerfile:
+        description: "The build path to the Dockerfile, relative to the context"
+        default: ${{ inputs.build-context }}/Dockerfile
+        type: string
+        required: false
+      build-tags:
+        description: "The tags for the Docker-Image"
+        type: string
+        required: true
+      build-args:
+        description: "Args passed to the build-process"
+        type: string
+        default: ""
+        required: false
+      build-labels:
+        description: "Labels set to the build"
+        default: ""
+        type: string
+        required: false
+      build-cache:
+        description: "The cache location for the build"
+        default: ""
+        type: string
+        required: false
+      build-platforms:
+        description: "The platforms to build the image for"
+        default: "linux/amd64"
+        type: string
+        required: false
+      push:
+        description: "If images shoud be pushed"
+        type: boolean
+        default: true
+        required: false
+      registry:
+        description: "The tags for the Docker-Image"
+        default: ""
+        type: string
+        required: false
+      extra-envs:
+        description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
+        default: ""
+        type: string
+        required: false
+      extra-command:
+        description: "Extra commands run in the workflow"
+        default: ""
+        type: string
+        required: false
+      runner:
+        description: "The GH-Runner to use"
+        default: "ubuntu-latest"
+        type: string
+        required: false
+    secrets:
+      AZURE_CLIENT_ID:
+        required: false
+      AZURE_TENANT_ID:
+        required: false
+      AZURE_SUBSCRIPTION_ID:
+        required: false
+      REGISTRY_USER:
+        required: false
+      REGISTRY_PW:
+        required: false
+      COSIGN_KEY_STORE:
+        required: false
+
+jobs:
+  build-image:
+    outputs:
+      COSIGN_RUN: ${{ steps.env-setup.outputs.COSIGN_KEY_SET }}
+      DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.build-repo }}
+
+      - name: Set ENVs
+        id: env-setup
+        run: |
+          for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+          done
+          if [ "$AZURE_CLIENT_ID" != "" ]; then
+            echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$COSIGN_KEY_STORE" != "" ]; then
+            echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
+
+      - name: Setup Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log into registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PW }}
+
+      - name: Log in with Azure
+        if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run passed commands
+        run: bash -c "${{ inputs.extra-command }}"
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v4
+        with:
+          sbom: true
+          push: ${{ inputs.push }}
+          tags: ${{ inputs.build-tags }}
+          cache-to: ${{ inputs.build-cache }}
+          cache-from: ${{ inputs.build-cache }}
+          context: ${{ inputs.build-context }}
+          platforms: ${{ inputs.build-platforms }}
+          build-args: ${{ inputs.build-args }}
+          labels: ${{ inputs.build-labels }}
+
+      - name: Azure Logout
+        if: (failure() && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes') || steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az logout
+            az cache purge
+            az account clear
+
+  sign-image:
+    runs-on: ${{ inputs.runner }}
+    if: needs.build-image.outputs.COSIGN_RUN == 'yes'
+    needs: build-image
+    steps:
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Set ENVs
+        id: env-setup
+        run: |
+          for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+          done
+          if [ "$AZURE_CLIENT_ID" != "" ]; then
+            echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$COSIGN_KEY_STORE" != "" ]; then
+            echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
+
+      - name: Log into registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ inputs.registry }}
+          username: ${{ secrets.REGISTRY_USER }}
+          password: ${{ secrets.REGISTRY_PW }}
+
+      - name: Log in with Azure
+        if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Run passed commands
+        run: bash -c "${{ inputs.extra-command }}"
+
+      - name: Sign the published Docker image
+        run: |
+          echo "$COSIGN_PVT_KEY" > cosign.key
+          for MY_IMG in $(echo "${{ inputs.build-tags }}" | tr "," "\n"); do
+            cosign sign --key cosign.key \
+            --yes --recursive \
+            -a build-by=$GITHUB_ACTOR \
+            -a repo=$GITHUB_REPOSITORY \
+            -a repo-sha=$GITHUB_SHA \
+            §MY_IMG@${{ needs.build-image.outputs.DOCKER_DIGEST }}
+          done
+          rm -rf cosign.key
+        env:
+          COSIGN_PVT_KEY: ${{ secrets.COSIGN_KEY_STORE }}
+
+      - name: Azure Logout
+        if: (failure() && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes') || steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az logout
+            az cache purge
+            az account clear
