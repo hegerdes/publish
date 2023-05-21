@@ -119,6 +119,13 @@ jobs:
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PW }}
 
+      - name: Log into registry GitHub
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         uses: azure/login@v1
