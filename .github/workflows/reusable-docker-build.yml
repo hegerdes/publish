@@ -69,18 +69,26 @@ on:
         required: false
     secrets:
       AZURE_CLIENT_ID:
+        description: "Azure OauthApp ClientId"
         required: false
       AZURE_TENANT_ID:
+        description: "Azure AD Tenant"
         required: false
       AZURE_SUBSCRIPTION_ID:
+        description: "Azure SubscriptionId"
         required: false
       REGISTRY_USER:
+        description: "Container Registry User"
         required: false
       REGISTRY_PW:
+        description: "Container Registry PW/Token"
         required: false
       COSIGN_KEY_STORE:
+        description: "Cosign KMS URL"
         required: false
-
+      MASK_ENVS:
+        description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
+        required: false
 jobs:
   build-image:
     outputs:
@@ -98,6 +106,11 @@ jobs:
         run: |
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
+          done
+          for MY_VAR in $(echo "${{ secrets.MASK_ENVS }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
           done
           if [ "$AZURE_CLIENT_ID" != "" ]; then
             echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
