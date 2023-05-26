@@ -1,4 +1,4 @@
-name: Docker-Build-and-Sign
+name: Docker-Build-Scan-and-Sign
 
 on:
   workflow_call:
@@ -62,6 +62,21 @@ on:
         default: ""
         type: string
         required: false
+      scan-image:
+        description: "If image should be scaned for vulnerabilities"
+        default: true
+        type: boolean
+        required: false
+      scan-image-severity:
+        description: "Severities of vulnerabilities to scanned for and displayed. Supports UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+        default: HIGH,CRITICAL
+        type: string
+        required: false
+      scan-image-trivy-config:
+        description: "Path to trivy-config"
+        default: ""
+        type: string
+        required: false
       runner:
         description: "The GH-Runner to use"
         default: "ubuntu-latest"
@@ -104,6 +119,7 @@ jobs:
       - name: Set ENVs
         id: env-setup
         run: |
+          echo "DOCKER_IMAGE_TAG=${DOCKER_IMAGES%%,*}" >> "$GITHUB_OUTPUT"
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
             echo "$MY_VAR" >> $GITHUB_OUTPUT
@@ -118,25 +134,32 @@ jobs:
           if [ "$COSIGN_KEY_STORE" != "" ]; then
             echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
           fi
+          if [ "$REGISTRY_PW" != "" ]; then
+            echo "REGISTRY_PW_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
+          REGISTRY_PW: ${{ secrets.REGISTRY_PW }}
+          DOCKER_IMAGES: ${{ inputs.build-tags }}
 
       - name: Setup Docker buildx
         uses: docker/setup-buildx-action@v2
 
       - name: Log into registry
         uses: docker/login-action@v2
+        if: inputs.push && steps.env-setup.outputs.REGISTRY_PW_SET == 'yes'
         with:
           registry: ${{ inputs.registry }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PW }}
 
       - name: Log into registry GitHub
+        if: inputs.push
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in with Azure
@@ -164,8 +187,29 @@ jobs:
           build-args: ${{ inputs.build-args }}
           labels: ${{ inputs.build-labels }}
 
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        if: inputs.scan-image
+        with:
+          scan-type: image
+          image-ref: ${{ steps.env-setup.outputs.DOCKER_IMAGE_TAG }}
+          hide-progress: false
+          format: sarif
+          output: trivy-results.sarif
+          exit-code: '1'
+          trivy-config: ${{ inputs.scan-image-trivy-config }}
+          severity: ${{ inputs.scan-image-severity }}
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        if: (success() || failure()) && inputs.scan-image
+        uses: github/codeql-action/upload-sarif@v2
+        continue-on-error: true
+        with:
+          sarif_file: 'trivy-results.sarif'
+
       - name: Azure Logout
-        if: (failure() && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes') || steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        continue-on-error: true
         uses: azure/CLI@v1
         with:
           inlineScript: |
@@ -186,6 +230,11 @@ jobs:
         run: |
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
+          done
+          for MY_VAR in $(echo "${{ secrets.MASK_ENVS }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
           done
           if [ "$AZURE_CLIENT_ID" != "" ]; then
             echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
@@ -193,16 +242,28 @@ jobs:
           if [ "$COSIGN_KEY_STORE" != "" ]; then
             echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
           fi
+          if [ "$REGISTRY_PW" != "" ]; then
+            echo "REGISTRY_PW_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
         env:
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
           COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
 
       - name: Log into registry
         uses: docker/login-action@v2
+        if: inputs.push && steps.env-setup.outputs.REGISTRY_PW_SET == 'yes'
         with:
           registry: ${{ inputs.registry }}
           username: ${{ secrets.REGISTRY_USER }}
           password: ${{ secrets.REGISTRY_PW }}
+
+      - name: Log into registry GitHub
+        if: inputs.push
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
@@ -231,7 +292,8 @@ jobs:
           COSIGN_PVT_KEY: ${{ secrets.COSIGN_KEY_STORE }}
 
       - name: Azure Logout
-        if: (failure() && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes') || steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        continue-on-error: true
         uses: azure/CLI@v1
         with:
           inlineScript: |
