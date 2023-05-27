@@ -92,14 +92,17 @@ on:
       AZURE_SUBSCRIPTION_ID:
         description: "Azure SubscriptionId"
         required: false
+      AZURE_CLIENT_SECRET:
+        description: "My be needed for cosign keyvault"
+        required: false
       REGISTRY_USER:
         description: "Container Registry User"
         required: false
       REGISTRY_PW:
         description: "Container Registry PW/Token"
         required: false
-      COSIGN_KEY_STORE:
-        description: "Cosign KMS URL"
+      COSIGN_KEY_OR_KMS:
+        description: "The cosign pvt or the KMS URL"
         required: false
       MASK_ENVS:
         description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
@@ -131,15 +134,15 @@ jobs:
           if [ "$AZURE_CLIENT_ID" != "" ]; then
             echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
           fi
-          if [ "$COSIGN_KEY_STORE" != "" ]; then
+          if [ "$COSIGN_KEY_OR_KMS" != "" ]; then
             echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
           fi
           if [ "$REGISTRY_PW" != "" ]; then
             echo "REGISTRY_PW_SET=yes" >> "$GITHUB_OUTPUT"
           fi
         env:
+          COSIGN_KEY_OR_KMS: ${{ secrets.COSIGN_KEY_OR_KMS }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
           REGISTRY_PW: ${{ secrets.REGISTRY_PW }}
           DOCKER_IMAGES: ${{ inputs.build-tags }}
 
@@ -178,6 +181,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           sbom: true
+          load: ${{ !inputs.push }}
           push: ${{ inputs.push }}
           tags: ${{ inputs.build-tags }}
           cache-to: ${{ inputs.build-cache }}
@@ -228,6 +232,7 @@ jobs:
       - name: Set ENVs
         id: env-setup
         run: |
+          echo "DOCKER_IMAGE_TAG=${DOCKER_IMAGES%%,*}" >> "$GITHUB_OUTPUT"
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
             echo "$MY_VAR" >> $GITHUB_OUTPUT
@@ -239,15 +244,17 @@ jobs:
           if [ "$AZURE_CLIENT_ID" != "" ]; then
             echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
           fi
-          if [ "$COSIGN_KEY_STORE" != "" ]; then
+          if [ "$COSIGN_KEY_OR_KMS" != "" ]; then
             echo "COSIGN_KEY_SET=yes" >> "$GITHUB_OUTPUT"
           fi
           if [ "$REGISTRY_PW" != "" ]; then
             echo "REGISTRY_PW_SET=yes" >> "$GITHUB_OUTPUT"
           fi
         env:
+          COSIGN_KEY_OR_KMS: ${{ secrets.COSIGN_KEY_OR_KMS }}
           AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-          COSIGN_KEY_STORE: ${{ secrets.COSIGN_KEY_STORE }}
+          REGISTRY_PW: ${{ secrets.REGISTRY_PW }}
+          DOCKER_IMAGES: ${{ inputs.build-tags }}
 
       - name: Log into registry
         uses: docker/login-action@v2
@@ -278,18 +285,33 @@ jobs:
 
       - name: Sign the published Docker image
         run: |
-          echo "$COSIGN_PVT_KEY" > cosign.key
+          if [[ "$COSIGN_KEY" != *"kms"* ]] && [[ "$COSIGN_KEY" != *"k8s"* ]] && [[ "$COSIGN_KEY" != *"hashivault"* ]]; then
+            echo "No KMS setup found. Using local key setup. Make sure the cosign decryption env is set."
+            echo "$COSIGN_KEY" > cosign.key
+            COSIGN_KEY=cosign.key
+          else
+            echo "Using KMS setup. Make sure the access to the KSM is set."
+          fi
+          if [ "${{ inputs.push }}" == "false" ]; then
+            echo "Cosign upload disabled."
+            COSIGN_UPLOAD_ARGS="--upload=false"
+          fi
           for MY_IMG in $(echo "${{ inputs.build-tags }}" | tr "," "\n"); do
-            cosign sign --key cosign.key \
-            --yes --recursive \
-            -a build-by=$GITHUB_ACTOR \
-            -a repo=$GITHUB_REPOSITORY \
-            -a repo-sha=$GITHUB_SHA \
-            §MY_IMG@${{ needs.build-image.outputs.DOCKER_DIGEST }}
+            MY_IMG_NAME=$(echo $MY_IMG | cut -d ":" -f 1)
+            echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
+            cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS\
+              --yes --recursive \
+              -a build-by=$GITHUB_ACTOR \
+              -a repo=$GITHUB_REPOSITORY \
+              -a repo-sha=$GITHUB_SHA \
+              ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}
           done
           rm -rf cosign.key
         env:
-          COSIGN_PVT_KEY: ${{ secrets.COSIGN_KEY_STORE }}
+          COSIGN_KEY: ${{ secrets.COSIGN_KEY_OR_KMS }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
 
       - name: Azure Logout
         if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
