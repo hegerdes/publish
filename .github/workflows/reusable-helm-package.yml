@@ -1,0 +1,189 @@
+name: Build-and-Publish-Helm-Chart
+
+on:
+  workflow_call:
+    inputs:
+      chart-repo:
+        description: "The repo to clone and build"
+        default: ${{ github.repository }}
+        type: string
+        required: false
+      chart-sources-dir:
+        description: "The build context path"
+        default: charts
+        type: string
+        required: true
+      chart-publish:
+        description: "If chart shoud be upladed"
+        default: true
+        type: boolean
+        required: false
+      chart-devel-version:
+        description: "If specified, sets either the value to chart devel version or the commit hash"
+        type: string
+        default: "false"
+        required: false
+      chart-release-version:
+        description: "Charts Release-version"
+        type: string
+        required: true
+      app-release-version:
+        description: "App Release-version"
+        type: string
+        default: ""
+        required: false
+      publish-to-gh-pages:
+        description: "Publish chart to gh pages. Default true"
+        type: boolean
+        default: true
+        required: false
+      oci-registry-uri:
+        description: "OCI registry URI"
+        default: ""
+        type: string
+        required: false
+      oci-registry-repo:
+        description: "OCI registry repository name"
+        default: ""
+        type: string
+        required: false
+      extra-envs:
+        description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
+        default: ""
+        type: string
+        required: false
+      extra-commands:
+        description: "Extra commands run in the workflow"
+        default: ""
+        type: string
+        required: false
+      runner:
+        description: "The GH-Runner to use"
+        default: "ubuntu-latest"
+        type: string
+        required: false
+    secrets:
+      AZURE_CLIENT_ID:
+        description: "Azure OAuth2 ClientId"
+        required: false
+      AZURE_TENANT_ID:
+        description: "Azure AD Tenant"
+        required: false
+      AZURE_SUBSCRIPTION_ID:
+        description: "Azure SubscriptionId"
+        required: false
+      OCI_REGISTRY_USER:
+        description: "Container Registry User"
+        required: false
+      OCI_REGISTRY_TOKEN:
+        description: "Container Registry PW/Token"
+        required: false
+      MASK_ENVS:
+        description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
+        required: false
+
+jobs:
+  build-and-publish-charts:
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.chart-repo }}
+          fetch-depth: 0
+
+      - name: Set ENVs
+        id: env-setup
+        run: |
+          echo "CHART_NAME=$(echo ${{ inputs.chart-sources-dir }} | tr / -)" >> $GITHUB_OUTPUT
+          echo "SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          git config user.name "$GITHUB_ACTOR"
+          git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+          for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
+          done
+          for MY_VAR in $(echo "${{ secrets.MASK_ENVS }}" | tr ";" "\n"); do
+            echo "$MY_VAR" >> $GITHUB_ENV
+            echo "$MY_VAR" >> $GITHUB_OUTPUT
+          done
+          if [ "$AZURE_CLIENT_ID" != "" ]; then
+            echo "AZ_LOGIN_SET=yes" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$APP_RELEASE_VERSION" == "" ]; then
+            echo "APP_RELEASE_VERSION=${{ inputs.chart-release-version }}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "$CHART_DEVEL_VERSION" != "false" ]; then
+            if [ "$CHART_DEVEL_VERSION" != "false" ]; then
+              echo "CHART_DEVEL_VERSION_POSTFIX=-$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+            else
+              echo "CHART_DEVEL_VERSION_POSTFIX=-${{ inputs.chart-devel-version }}" >> "$GITHUB_OUTPUT"
+            fi
+            echo "Dev version set"
+          fi
+        env:
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          APP_RELEASE_VERSION: ${{ inputs.app-release-version }}
+          CHART_DEVEL_VERSION: ${{ inputs.chart-devel-version }}
+
+      - name: Install Helm
+        uses: azure/setup-helm@v3
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log in with Azure
+        if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Login to OCI Registry
+        if: inputs.oci-registry-uri != '' && inputs.chart-publish
+        run: |
+          echo "Will login to ${{ inputs.oci-registry-uri }}"
+          echo ${{ secrets.OCI_REGISTRY_TOKEN }} | helm registry login -u ${{ secrets.OCI_REGISTRY_USER }} --password-stdin ${{ inputs.oci-registry-uri }}
+
+      - name: Run passed commands
+        run: bash -c "${{ inputs.extra-commands }}"
+
+      - name: Package Charts
+        run: |
+          mkdir -p charts/.ci-build
+          echo "Setting chart version to ${{ inputs.chart-release-version }} and app version to ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}"
+          helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: helm-chart-${{ steps.env-setup.outputs.CHART_NAME }}-${{ inputs.chart-release-version }}
+          path: charts/.ci-build/*
+          retention-days: 60
+
+      - name: Push to OCI Registry
+        working-directory: charts/.ci-build
+        if: inputs.oci-registry-uri != '' && inputs.chart-publish
+        run: |
+          echo "Will push these charts:"
+          ls -l *.tgz
+          helm push *.tgz oci://${{ inputs.oci-registry-uri }}/${{ inputs.oci-registry-repo }}
+
+      - name: Publish to GH-Pages
+        uses: helm/chart-releaser-action@v1.5.0
+        if: inputs.publish-to-gh-pages && inputs.chart-publish
+        with:
+          skip_packaging: true
+        env:
+          CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CR_PACKAGE_PATH: charts/.ci-build
+
+      - name: Azure Logout
+        if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
+        continue-on-error: true
+        uses: azure/CLI@v1
+        with:
+          inlineScript: |
+            az logout
+            az cache purge
+            az account clear
