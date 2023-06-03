@@ -82,6 +82,11 @@ on:
         default: "ubuntu-latest"
         type: string
         required: false
+      environment:
+        description: "GitHub Environment"
+        default: "default"
+        type: string
+        required: false
     secrets:
       AZURE_CLIENT_ID:
         description: "Azure OAuth2 ClientId"
@@ -104,6 +109,13 @@ on:
       MASK_ENVS:
         description: "Extra envs passed to the runner. Format: VAR1=VAL1;VAR2=VAL2..."
         required: false
+    outputs:
+      docker-digest:
+        description: "The Docker Image DIGEST sha"
+        value: ${{ jobs.build-image.outputs.DOCKER_DIGEST }}
+      sign-signatures:
+        description: "The Cosign signatures. Seperated by ',' when there is more then one"
+        value: ${{ jobs.sign-image.outputs.SIGN_SIGNATURES }}
 
 jobs:
   build-image:
@@ -111,6 +123,7 @@ jobs:
       COSIGN_RUN: ${{ steps.env-setup.outputs.COSIGN_KEY_SET }}
       DOCKER_DIGEST: ${{ steps.build-and-push.outputs.digest }}
     runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -221,6 +234,8 @@ jobs:
 
   sign-image:
     runs-on: ${{ inputs.runner }}
+    outputs:
+      SIGN_SIGNATURES: ${{ steps.sign.outputs.SIGN_SIGNATURES }}
     if: needs.build-image.outputs.COSIGN_RUN == 'yes'
     needs: build-image
     steps:
@@ -281,7 +296,8 @@ jobs:
       - name: Run passed commands
         run: bash -c "${{ inputs.extra-commands }}"
 
-      - name: Sign the published Docker image
+      - name: Sign Docker image
+        id: sign
         run: |
           if [[ "$COSIGN_KEY" != *"kms"* ]] && [[ "$COSIGN_KEY" != *"k8s"* ]] && [[ "$COSIGN_KEY" != *"hashivault"* ]]; then
             echo "No KMS setup found. Using local key setup. Make sure the cosign decryption env is set."
@@ -299,11 +315,15 @@ jobs:
             echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
             cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS\
               --yes --recursive \
+              --output-signature $MY_IMG.sig \
               -a build-by=$GITHUB_ACTOR \
               -a repo=$GITHUB_REPOSITORY \
               -a repo-sha=$GITHUB_SHA \
               ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}
           done
+          SIGS=$(for sig in *.sig; do cat $sig; echo -n ","; done)
+          echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}"
+          echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}" >> "$GITHUB_OUTPUT"
           rm -rf cosign.key
         env:
           COSIGN_KEY: ${{ secrets.COSIGN_KEY_OR_KMS }}
