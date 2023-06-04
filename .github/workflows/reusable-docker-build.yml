@@ -312,10 +312,11 @@ jobs:
           fi
           for MY_IMG in $(echo "${{ inputs.build-tags }}" | tr "," "\n"); do
             MY_IMG_NAME=$(echo $MY_IMG | cut -d ":" -f 1)
+            MY_IMG_SIG_NAME=$(echo $MY_IMG_NAME | tr '/' '-')
             echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
             cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS\
               --yes --recursive \
-              --output-signature $MY_IMG.sig \
+              --output-signature $MY_IMG_SIG_NAME.sig \
               -a build-by=$GITHUB_ACTOR \
               -a repo=$GITHUB_REPOSITORY \
               -a repo-sha=$GITHUB_SHA \
