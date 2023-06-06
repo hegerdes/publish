@@ -181,8 +181,9 @@ jobs:
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
 
       - name: Run chart-testing (lint)
-        continue-on-error: true
         if: inputs.chart-lint
+        continue-on-error: true
+        working-directory: ${{ inputs.chart-sources-dir }}
         run: ct lint --target-branch ${{ github.event.repository.default_branch }} ${{ inputs.chart-lint-extra-args }}
 
       - name: Upload artifact
