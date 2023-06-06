@@ -23,6 +23,16 @@ on:
         type: string
         default: "false"
         required: false
+      chart-lint:
+        description: "If charts should be linted with helm/chart-testing"
+        type: boolean
+        default: true
+        required: false
+      chart-lint-extra-args:
+        description: "Extra args passed to chart-testing lint"
+        type: string
+        default: ""
+        required: false
       chart-release-version:
         description: "Charts Release-version"
         type: string
@@ -137,6 +147,15 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: actions/setup-python@v4
+        if: inputs.chart-lint
+        with:
+          python-version: '3.11'
+
+      - name: Set up chart-testing
+        if: inputs.chart-lint
+        uses: helm/chart-testing-action@v2.4.0
+
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         uses: azure/login@v1
@@ -160,6 +179,11 @@ jobs:
           echo "Setting chart version to ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} and app version to ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }}"
           helm dependency update ${{ inputs.chart-sources-dir }}
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
+
+      - name: Run chart-testing (lint)
+        continue-on-error: true
+        if: inputs.chart-lint
+        run: ct lint --target-branch ${{ github.event.repository.default_branch }} ${{ inputs.chart-lint-extra-args }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
