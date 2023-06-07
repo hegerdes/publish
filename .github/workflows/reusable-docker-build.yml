@@ -314,7 +314,14 @@ jobs:
             MY_IMG_NAME=$(echo $MY_IMG | cut -d ":" -f 1)
             MY_IMG_SIG_NAME=$(echo $MY_IMG_NAME | tr '/' '-')
             echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
-            cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS\
+            echo "Running: cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS \
+              --yes --recursive \
+              --output-signature ${MY_IMG_SIG_NAME}.sig \
+              -a build-by=$GITHUB_ACTOR \
+              -a repo=$GITHUB_REPOSITORY \
+              -a repo-sha=$GITHUB_SHA \
+              ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}"
+            cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS \
               --yes --recursive \
               --output-signature ${MY_IMG_SIG_NAME}.sig \
               -a build-by=$GITHUB_ACTOR \
@@ -322,7 +329,7 @@ jobs:
               -a repo-sha=$GITHUB_SHA \
               ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}
           done
-          ls -l *.sig
+          ls -l
           SIGS=$(for sig in *.sig; do cat $sig; echo -n ","; done)
           echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}"
           echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}" >> "$GITHUB_OUTPUT"
