@@ -4,7 +4,7 @@ on:
   push:
     tags: ['*']
   schedule:
-    - cron: '1 0 1 * *'
+    - cron: '1 0 1,15 * *'
 
 permissions:
   contents: write
@@ -36,9 +36,9 @@ jobs:
           ref: ${{ steps.releases.outputs.CRUN_TAG }}
 
       - name: Get publish hash-data
+        working-directory: crun
         id: metadata
         run: |
-          cd crun
           echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
           echo "RELEASE_ARTIFACT=$(echo ${{ matrix.arch }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
