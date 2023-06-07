@@ -23,13 +23,19 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
+      - name: Get latest publish versions
+        id: releases
+        run: |
+          echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
+
       - name: Checkout crun
         uses: actions/checkout@v3
         with:
           repository: containers/crun
           path: crun
+          ref: ${{ steps.releases.outputs.CRUN_TAG }}
 
-      - name: Get crun hash
+      - name: Get publish hash-data
         id: metadata
         run: |
           cd crun
