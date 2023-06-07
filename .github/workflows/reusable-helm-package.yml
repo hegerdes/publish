@@ -179,11 +179,12 @@ jobs:
           mkdir -p charts/.ci-build
           echo "Setting chart version to ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} and app version to ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }}"
           helm dependency update ${{ inputs.chart-sources-dir }}
+          helm lint ${{ inputs.chart-sources-dir }}
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
           # Sleep random time to avoid gh-pages race condition
           sleep $(( $RANDOM % 16))
 
-      - name: Run chart-testing (lint)
+      - name: Lint charts
         if: inputs.chart-lint
         continue-on-error: true
         working-directory: ${{ inputs.chart-sources-dir }}
