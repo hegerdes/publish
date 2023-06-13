@@ -316,23 +316,22 @@ jobs:
             echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
             echo "Running: cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS \
               --yes --recursive \
-              --output-signature ${MY_IMG_SIG_NAME}.sig \
+              --output-signature sig-${MY_IMG_SIG_NAME} \
               -a build-by=$GITHUB_ACTOR \
               -a repo=$GITHUB_REPOSITORY \
               -a repo-sha=$GITHUB_SHA \
               ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}"
             cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS \
               --yes --recursive \
-              --output-signature ${MY_IMG_SIG_NAME}.sig \
+              --output-signature sig-${MY_IMG_SIG_NAME} \
               -a build-by=$GITHUB_ACTOR \
               -a repo=$GITHUB_REPOSITORY \
               -a repo-sha=$GITHUB_SHA \
               ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}
           done
-          ls -l
-          SIGS=$(for sig in *.sig; do cat $sig; echo -n ","; done)
-          echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}"
-          echo "SIGN_SIGNATURES=${DOCKER_IMAGES%%,*}" >> "$GITHUB_OUTPUT"
+          ls -l sig-*
+          echo "SIGN_SIGNATURES=$(cat sig-*)"
+          echo "SIGN_SIGNATURES=$(cat sig-*)" >> "$GITHUB_OUTPUT"
           rm -rf cosign.key
         env:
           COSIGN_KEY: ${{ secrets.COSIGN_KEY_OR_KMS }}
