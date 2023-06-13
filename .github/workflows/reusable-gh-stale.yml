@@ -1,0 +1,52 @@
+name: Comunity-Tasks-Stale
+
+on:
+  workflow_call:
+    inputs:
+      issue-stale-label:
+        description: "Nuber of days till labeled stale"
+        default: 90
+        type: number
+        required: false
+      issue-stale-close:
+        description: "Nuber of days till stale labeld issues are closed"
+        default: 90
+        type: number
+        required: false
+      exempt-issue-labels:
+        description: "Issues not to close"
+        default: ""
+        type: string
+        required: false
+      pr-stale-label:
+        description: "Nuber of days till labeled stale"
+        default: 90
+        type: number
+        required: false
+      pr-stale-close:
+        description: "Nuber of days till stale labeld PRs are closed"
+        default: "-1"
+        type: number
+        required: false
+      exempt-pr-labels:
+        description: "PRs not to close"
+        default: "feature,beta"
+        type: string
+        required: false
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v8
+        with:
+          stale-issue-message: 'This issue is stale because it has been open ${{ inputs.issue-stale-label }} days with no activity. Remove stale label or comment or this will be closed in 14 days.'
+          close-issue-message: 'This issue was closed because it has been stalled for ${{ inputs.issue-stale-close }} days with no activity.'
+          days-before-stale: ${{ inputs.issue-stale-label }}
+          days-before-close: ${{ inputs.issue-stale-close }}
+          exempt-issue-labels: ${{ inputs.exempt-issue-labels }}
+          stale-pr-message: 'This PR is stale because it has been open ${{ inputs.pr-stale-label }} days with no activity. Remove stale label or comment or this will be closed days.'
+          days-before-pr-stale: ${{ inputs.pr-stale-label}}
+          days-before-pr-close: ${{ inputs.pr-stale-close }}
+          exempt-pr-labels: ${{ inputs.exempt-pr-labels }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
