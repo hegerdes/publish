@@ -25,7 +25,7 @@ on:
         required: false
       pr-stale-close:
         description: "Nuber of days till stale labeld PRs are closed"
-        default: "-1"
+        default: -1
         type: number
         required: false
       exempt-pr-labels:
