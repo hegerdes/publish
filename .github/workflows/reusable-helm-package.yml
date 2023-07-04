@@ -217,9 +217,7 @@ jobs:
       - name: Azure Logout
         if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         continue-on-error: true
-        uses: azure/CLI@v1
-        with:
-          inlineScript: |
+        run: |
             az logout
             az cache purge
             az account clear
