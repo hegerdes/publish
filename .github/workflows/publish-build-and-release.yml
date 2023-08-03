@@ -22,11 +22,12 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
       - name: Get latest publish versions
         id: releases
-        run: |
-          mkdir -p artifacts
-          echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
+        run: echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout crun
         uses: actions/checkout@v3
@@ -43,13 +44,10 @@ jobs:
           echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
           echo "RELEASE_ARTIFACT=$(echo ${{ matrix.arch }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
       - name: Create artifact dir
         run: mkdir -p artifacts
 
-      - name: Build
+      - name: Crun build
         uses: docker/build-push-action@v4
         with:
           load: true
@@ -59,7 +57,7 @@ jobs:
           platforms: ${{ matrix.arch }}
           build-args: CrunVersion=${{ steps.releases.outputs.CRUN_TAG }}
 
-      - name: Inspect
+      - name: Inspect and extract artifacts
         run: |
           docker image inspect ${{ matrix.arch }}/wasmcrun:latest
           docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmcrun bash -c 'cp -rv /builder/*.tar.gz /export/'
