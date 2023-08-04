@@ -33,6 +33,26 @@ on:
         type: string
         default: ""
         required: false
+      chart-test:
+        description: "If charts should be tested with helm/chart-testing"
+        type: boolean
+        default: true
+        required: false
+      chart-test-extra-args:
+        description: "Extra args passed to chart-testing install"
+        type: string
+        default: ""
+        required: false
+      chart-test-config-dir:
+        description: "Path to the directory containing config.yaml, chart_schema.yaml and lintconf.yaml"
+        type: string
+        default: charts
+        required: false
+      chart-test-kind-version:
+        description: "The kind version to use (default: v0.19.0)"
+        type: string
+        required: false
+        default: "v0.20.0"
       chart-release-version:
         description: "Charts Release-version"
         type: string
@@ -98,6 +118,52 @@ on:
         required: false
 
 jobs:
+  lint-and-test-chatrs:
+    if: inputs.chart-lint || inputs.chart-test
+    runs-on: ${{ inputs.runner }}
+    environment: ${{ inputs.environment }}
+    env:
+      CT_BUILD_ID: ${{ github.ref_name }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v3
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Set up chart-testing
+        uses: helm/chart-testing-action@v2.4.0
+
+      - name: Update helm dependencies
+        run: |
+          find ${{ inputs.chart-test-config-dir }} -maxdepth 1 -regextype egrep -regex '.*ya?ml$' -exec cp -v {} . \;
+          helm dependency update ${{ inputs.chart-sources-dir }}
+          helm package ${{ inputs.chart-sources-dir }}
+
+      - name: Run chart-testing (lint)
+        if: inputs.chart-lint
+        run: |
+          ct lint --target-branch ${{ github.event.repository.default_branch }} \
+            --charts ${{ inputs.chart-sources-dir }} ${{ inputs.chart-lint-extra-args }}
+
+      - name: Create kind cluster ${{ inputs.chart-test-kind-version }}
+        if: inputs.chart-test
+        uses: helm/kind-action@v1.8.0
+        with:
+          version: ${{ inputs.chart-test-kind-version }}
+
+      - name: Run chart-testing (install)
+        if: inputs.chart-test
+        run: |
+          ct install --target-branch ${{ github.event.repository.default_branch }} \
+            --charts ${{ inputs.chart-sources-dir }}
+
   build-and-publish-charts:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
@@ -147,15 +213,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: actions/setup-python@v4
-        if: inputs.chart-lint
-        with:
-          python-version: '3.11'
-
-      - name: Set up chart-testing
-        if: inputs.chart-lint
-        uses: helm/chart-testing-action@v2.4.0
-
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         uses: azure/login@v1
@@ -183,12 +240,6 @@ jobs:
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
           # Sleep random time to avoid gh-pages race condition
           sleep $(( $RANDOM % 16))
-
-      - name: Lint charts
-        if: inputs.chart-lint
-        continue-on-error: true
-        working-directory: ${{ inputs.chart-sources-dir }}
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }} ${{ inputs.chart-lint-extra-args }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
