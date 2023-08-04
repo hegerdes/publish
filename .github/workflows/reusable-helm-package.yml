@@ -123,7 +123,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     environment: ${{ inputs.environment }}
     env:
-      CT_BUILD_ID: ${{ github.ref_name }}
+      CT_BUILD_ID: ${{ github.head_ref || github.ref_name }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
