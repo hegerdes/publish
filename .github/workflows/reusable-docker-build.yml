@@ -18,8 +18,12 @@ on:
         default: ${{ inputs.build-context }}/Dockerfile
         type: string
         required: false
+      build-name:
+        description: "The base name for the Docker-Image"
+        type: string
+        required: true
       build-tags:
-        description: "The tags for the Docker-Image"
+        description: "The tags for the Docker-Image. Needs to be newline seperated."
         type: string
         required: true
       build-args:
@@ -184,6 +188,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      - name: Docker meta
+        id: metadata
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ inputs.build-name }}
+          tags: ${{ inputs.build-tags }}
+          labels: ${{ inputs.build-labels }}
+
       - name: Run passed commands
         run: bash -c "${{ inputs.extra-commands }}"
 
@@ -195,13 +207,13 @@ jobs:
           provenance: true
           load: ${{ !inputs.push }}
           push: ${{ inputs.push }}
-          tags: ${{ inputs.build-tags }}
+          tags: ${{ steps.metadata.outputs.tags }}
           cache-to: ${{ inputs.build-cache }}
           cache-from: ${{ inputs.build-cache }}
           context: ${{ inputs.build-context }}
           platforms: ${{ inputs.build-platforms }}
           build-args: ${{ inputs.build-args }}
-          labels: ${{ inputs.build-labels }}
+          labels: ${{ steps.metadata.outputs.labels }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
