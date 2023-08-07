@@ -321,8 +321,7 @@ jobs:
             echo "Cosign upload disabled."
             COSIGN_UPLOAD_ARGS="--upload=false"
           fi
-          for MY_IMG in $(echo "${{ inputs.build-tags }}" | tr "," "\n"); do
-            MY_IMG_NAME=$(echo $MY_IMG | cut -d ":" -f 1)
+          for MY_IMG_NAME in $(echo "${{ inputs.build-name }}" | tr "," "\n"); do
             MY_IMG_SIG_NAME=$(echo $MY_IMG_NAME | tr '/' '-')
             echo "Signing ${MY_IMG_NAME}@${{ needs.build-image.outputs.DOCKER_DIGEST }}..."
             echo "Running: cosign sign --key $COSIGN_KEY $COSIGN_UPLOAD_ARGS $COSIGN_EXTRA_ARGS \
