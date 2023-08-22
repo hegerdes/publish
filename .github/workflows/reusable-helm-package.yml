@@ -239,7 +239,7 @@ jobs:
           helm lint ${{ inputs.chart-sources-dir }}
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
           # Sleep random time to avoid gh-pages race condition
-          sleep $(( $RANDOM % 16))
+          sleep $(( $RANDOM % 32))
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
@@ -259,11 +259,44 @@ jobs:
       - name: Publish to GH-Pages
         uses: helm/chart-releaser-action@v1.5.0
         if: inputs.publish-to-gh-pages && inputs.chart-publish
+        id: ghpublish
         with:
           skip_packaging: true
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_PACKAGE_PATH: charts/.ci-build
+
+      - name: Cleanup GH-Release
+        if: ${{ failure() && steps.ghpublish.conclusion == 'failure' }}
+        uses: actions/github-script@v6
+        continue-on-error: true
+        with:
+          # See: https://github.com/actions/toolkit/tree/main/packages/core#actionscore
+          script: |
+            const chart_sources_dir = process.env.CHART_SOURCES_DIR
+            const chart_version = process.env.CHART_VERSION
+            const tag = chart_sources_dir.split('/').pop() + '-' + chart_version
+            const owner = process.env.GITHUB_REPOSITORY_OWNER
+            const repo = process.env.GITHUB_REPOSITORY.split('/').pop()
+            const headers = { 'X-GitHub-Api-Version': '2022-11-28' }
+            const default_params = { owner: owner, repo: repo, headers: headers }
+
+            let res = await octokit.request('GET /repos/{owner}/{repo}/releases/tags/{tag}', { ...default_params, tag: tag })
+
+            if (res.status === 200) {
+              console.log('Release found. Will try to delete it')
+              res = await octokit.request('DELETE /repos/{owner}/{repo}/releases/{release_id}', { ...default_params, release_id: res.data.id, })
+
+              if (res.status !== 204) {
+                console.error('Release could not be deleted')
+                process.exit(1)
+              }
+
+              console.log('Release deleted')
+            }
+        env:
+          CHART_SOURCES_DIR: ${{ inputs.chart-sources-dir }}
+          CHART_VERSION: ${{ inputs.chart-release-version }}
 
       - name: Azure Logout
         if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
