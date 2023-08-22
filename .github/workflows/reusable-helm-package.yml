@@ -265,6 +265,7 @@ jobs:
         env:
           CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CR_PACKAGE_PATH: charts/.ci-build
+          CR_SKIP_EXISTING: "true"
 
       - name: Cleanup GH-Release
         if: ${{ failure() && steps.ghpublish.conclusion == 'failure' }}
