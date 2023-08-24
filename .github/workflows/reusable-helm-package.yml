@@ -162,7 +162,7 @@ jobs:
         if: inputs.chart-test
         run: |
           ct install --target-branch ${{ github.event.repository.default_branch }} \
-            --charts ${{ inputs.chart-sources-dir }}
+            --charts ${{ inputs.chart-sources-dir }} ${{ inputs.chart-test-extra-args }}
 
   build-and-publish-charts:
     runs-on: ${{ inputs.runner }}
@@ -240,6 +240,7 @@ jobs:
           helm package ${{ inputs.chart-sources-dir }} --version ${{ inputs.chart-release-version }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --app-version ${{ steps.env-setup.outputs.APP_RELEASE_VERSION }}${{ steps.env-setup.outputs.CHART_DEVEL_VERSION_POSTFIX }} --destination charts/.ci-build
           # Sleep random time to avoid gh-pages race condition
           sleep $(( $RANDOM % 32))
+          git fetch --all
 
       - name: Upload artifact
         uses: actions/upload-artifact@v3
