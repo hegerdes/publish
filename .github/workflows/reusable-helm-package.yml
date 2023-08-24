@@ -282,11 +282,11 @@ jobs:
             const headers = { 'X-GitHub-Api-Version': '2022-11-28' }
             const default_params = { owner: owner, repo: repo, headers: headers }
 
-            let res = await octokit.request('GET /repos/{owner}/{repo}/releases/tags/{tag}', { ...default_params, tag: tag })
+            let res = await github.request('GET /repos/{owner}/{repo}/releases/tags/{tag}', { ...default_params, tag: tag })
 
             if (res.status === 200) {
               console.log('Release found. Will try to delete it')
-              res = await octokit.request('DELETE /repos/{owner}/{repo}/releases/{release_id}', { ...default_params, release_id: res.data.id, })
+              res = await github.request('DELETE /repos/{owner}/{repo}/releases/{release_id}', { ...default_params, release_id: res.data.id, })
 
               if (res.status !== 204) {
                 console.error('Release could not be deleted')
