@@ -81,6 +81,11 @@ on:
         default: ""
         type: string
         required: false
+      scan-checkov-args:
+        description: "Extra args for checkov"
+        default: "--soft-fail"
+        type: string
+        required: false
       runner:
         description: "The GH-Runner to use"
         default: "ubuntu-latest"
@@ -211,6 +216,7 @@ jobs:
           load: ${{ !inputs.push }}
           push: ${{ inputs.push }}
           tags: ${{ steps.metadata.outputs.tags }}
+          file: ${{ inputs.build-dockerfile }}
           cache-to: ${{ inputs.build-cache }}
           cache-from: ${{ inputs.build-cache }}
           context: ${{ inputs.build-context }}
@@ -261,6 +267,16 @@ jobs:
           REGISTRY_PW: ${{ secrets.REGISTRY_PW }}
           DOCKER_IMAGE_NAMES: ${{ inputs.build-name }}
           DOCKER_IMAGE_TAGS: ${{ inputs.build-tags }}
+
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Run checkov
+        id: checkov_run
+        run: |
+          pip3 install checkov
+          checkov --file ${{ inputs.build-dockerfile }} ${{ inputs.scan-checkov-args }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@master
