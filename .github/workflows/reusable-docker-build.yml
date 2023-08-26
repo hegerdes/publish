@@ -15,7 +15,7 @@ on:
         required: false
       build-dockerfile:
         description: "The build path to the Dockerfile, relative to the context"
-        default: ${{ inputs.build-context }}/Dockerfile
+        default: Dockerfile
         type: string
         required: false
       build-name:
