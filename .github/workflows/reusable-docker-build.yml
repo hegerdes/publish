@@ -238,6 +238,11 @@ jobs:
     needs: build-image
     environment: ${{ inputs.environment }}
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          repository: ${{ inputs.build-repo }}
+
       - name: Set ENVs
         id: env-setup
         run: |
