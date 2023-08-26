@@ -10,7 +10,7 @@ on:
         required: false
       build-context:
         description: "The build context path"
-        default: ${{ github.workspace }}
+        default: "."
         type: string
         required: false
       build-dockerfile:
