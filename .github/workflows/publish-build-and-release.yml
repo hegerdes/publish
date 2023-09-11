@@ -17,7 +17,7 @@ jobs:
         arch: [linux/amd64, linux/arm64]
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -30,7 +30,7 @@ jobs:
         run: echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout crun
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: containers/crun
           path: crun
@@ -80,7 +80,7 @@ jobs:
           echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout crun
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: containers/crun
           path: crun
