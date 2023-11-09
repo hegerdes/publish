@@ -81,6 +81,11 @@ on:
         default: ""
         type: string
         required: false
+      scan-image-trivy-exit-code:
+        description: "Exit code of trivy"
+        default: 0
+        type: number
+        required: false
       scan-checkov-args:
         description: "Extra args for checkov"
         default: "--soft-fail"
@@ -291,7 +296,7 @@ jobs:
           hide-progress: false
           format: sarif
           output: trivy-results.sarif
-          exit-code: '1'
+          exit-code: ${{ inputs.scan-image-trivy-exit-code }}
           trivy-config: ${{ inputs.scan-image-trivy-config }}
           severity: ${{ inputs.scan-image-severity }}
 
