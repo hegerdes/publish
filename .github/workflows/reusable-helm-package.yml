@@ -270,7 +270,7 @@ jobs:
 
       - name: Cleanup GH-Release
         if: ${{ failure() && steps.ghpublish.conclusion == 'failure' }}
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         continue-on-error: true
         with:
           # See: https://github.com/actions/toolkit/tree/main/packages/core#actionscore
