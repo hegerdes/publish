@@ -38,7 +38,7 @@ jobs:
   stale:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/stale@v8
+      - uses: actions/stale@v9
         with:
           stale-issue-message: 'This issue is stale because it has been open ${{ inputs.issue-stale-label }} days with no activity. Remove stale label or comment or this will be closed in 14 days.'
           close-issue-message: 'This issue was closed because it has been stalled for ${{ inputs.issue-stale-close }} days with no activity.'
