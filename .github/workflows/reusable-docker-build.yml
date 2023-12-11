@@ -278,7 +278,7 @@ jobs:
           DOCKER_IMAGE_NAMES: ${{ inputs.build-name }}
           DOCKER_IMAGE_TAGS: ${{ inputs.build-tags }}
 
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
