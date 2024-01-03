@@ -2,9 +2,6 @@ name: Build and Release
 
 on:
   push:
-    tags: ['*']
-  schedule:
-    - cron: '1 0 1,15 * *'
 
 permissions:
   contents: write
@@ -69,15 +66,77 @@ jobs:
           path: artifacts/*
           retention-days: 60
 
+  Build-Pigz:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        # arch: [linux/amd64, linux/arm64]
+        exclude:
+          - os: windows-latest
+
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Get latest publish versions
+        id: releases
+        run: echo "PIGZ_TAG=$(curl -s https://api.github.com/repos/madler/pigz/tags | jq -r .[0].name)" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout pigz
+        uses: actions/checkout@v4
+        with:
+          repository: madler/pigz
+          path: pigz
+          ref: ${{ steps.releases.outputs.PIGZ_TAG }}
+
+      - name: Get publish hash-data
+        working-directory: pigz
+        id: metadata
+        run: |
+          echo "PIGZ_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_ARTIFACT=$(echo ${{ matrix.os }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
+
+      - name: Create artifact dir
+        run: mkdir -p artifacts
+
+      - name: Pigz build
+        uses: docker/build-push-action@v5
+        with:
+          load: true
+          context: scripts
+          file: scripts/Dockerfile.pigz
+          tags: linux/pigz:latest
+          platforms: linux/amd64,linux/arm64
+          build-args: PigzVersion=${{ steps.tags.outputs.PIGZ_TAG }}
+
+      - name: Inspect and extract artifacts
+        run: |
+          docker image inspect linux/pigz:latest
+          docker run --rm --platform linux/amd64 -v $GITHUB_WORKSPACE/artifacts:/export linux/pigz:latest bash -c 'cp -rv /builder/*.tar.gz /export/'
+          docker run --rm --platform linux/arm64 -v $GITHUB_WORKSPACE/artifacts:/export linux/pigz:latest bash -c 'cp -rv /builder/*.tar.gz /export/'
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wasm-crun-${{ steps.metadata.outputs.RELEASE_ARTIFACT }}
+          path: artifacts/*
+          retention-days: 60
+
   Release:
     runs-on: ubuntu-latest
-    needs: [Build-Crun]
+    needs: [Build-Crun, Build-Pigz]
     steps:
       - name: Get latest publish versions
         id: releases
         run: |
           mkdir -p artifacts
           echo "CRUN_TAG=$(curl -s https://api.github.com/repos/containers/crun/releases/latest | jq -r .tag_name)" >> "$GITHUB_OUTPUT"
+          echo "PIGZ_TAG=$(curl -s https://api.github.com/repos/madler/pigz/tags | jq -r .[0].name)" >> "$GITHUB_OUTPUT"
 
       - name: Checkout crun
         uses: actions/checkout@v4
@@ -86,12 +145,22 @@ jobs:
           path: crun
           ref: ${{ steps.releases.outputs.CRUN_TAG }}
 
+      - name: Checkout pigz
+        uses: actions/checkout@v4
+        with:
+          repository: madler/pigz
+          path: pigz
+          ref: ${{ steps.releases.outputs.PIGZ_TAG }}
+
       - name: Get publish hash-data
-        working-directory: crun
         id: metadata
         run: |
+          cd crun
           echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          echo "CRUN_RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          cd ../pigz
+          echo "PIGZ_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          echo "PIGZ_RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
 
       - name: Download artifatcs
         uses: actions/download-artifact@v4
@@ -105,25 +174,25 @@ jobs:
           for i in wasm-crun*; do echo "Found ${i}"; mv $i/*.tar.gz .; rm -rf $i; done
           ls -la
 
-      - name: Release
-        id: release
-        if: ${{ github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v') }}
-        uses: softprops/action-gh-release@v1
-        with:
-          name: "Artifacts: Crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
-          tag_name: v${{ steps.metadata.outputs.RELEASE_VERSION }}
-          fail_on_unmatched_files: true
-          body: |
-            These are unofficial periodic release of different tools with extra configuration than the official ons.
-            Included are:
-              * [crun](https://github.com/containers/crun)
+      # - name: Release
+      #   id: release
+      #   if: ${{ github.event_name == 'schedule' || startsWith(github.ref, 'refs/tags/v') }}
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     name: "Artifacts: Crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}"
+      #     tag_name: v${{ steps.metadata.outputs.RELEASE_VERSION }}
+      #     fail_on_unmatched_files: true
+      #     body: |
+      #       These are unofficial periodic release of different tools with extra configuration than the official ons.
+      #       Included are:
+      #         * [crun](https://github.com/containers/crun)
 
-            ## Crun
-            It is build with wasm support and only for the amd64/arm64 arch.
-            This release was build at [crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.metadata.outputs.CRUN_REPO_HASH }})
+      #       ## Crun
+      #       It is build with wasm support and only for the amd64/arm64 arch.
+      #       This release was build at [crun@${{ steps.metadata.outputs.CRUN_REPO_HASH }}](https://github.com/containers/crun/tree/${{ steps.metadata.outputs.CRUN_REPO_HASH }})
 
-            The libs in the archive need to be added to your system LIBs PATH.
-            See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
-            Also the package libyajl2 is requiered.
-          token: ${{ secrets.GITHUB_TOKEN }}
-          files: artifacts/*
+      #       The libs in the archive need to be added to your system LIBs PATH.
+      #       See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
+      #       Also the package libyajl2 is requiered.
+      #     token: ${{ secrets.GITHUB_TOKEN }}
+      #     files: artifacts/*

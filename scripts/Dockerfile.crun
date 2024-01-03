@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 # Install dev deps
 RUN apt-get update && apt-get install -y \
