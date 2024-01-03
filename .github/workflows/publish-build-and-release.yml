@@ -99,7 +99,7 @@ jobs:
         run: |
           echo "PIGZ_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
-          if [[ "${{ matrix.os }}"== *"windows"* ]]; then
+          if [[ "${{ matrix.os }}" == *"windows"* ]]; then
             echo "RELEASE_ARTIFACT=$(echo windows)" >> "$GITHUB_OUTPUT"
             echo "RELEASE_ARTIFACT=$(echo windows)"
           else
