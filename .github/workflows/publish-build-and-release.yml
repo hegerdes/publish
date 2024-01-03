@@ -67,11 +67,11 @@ jobs:
           retention-days: 60
 
   Build-Pigz:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
-        # arch: [linux/amd64, linux/arm64]
+        arch: [linux/amd64, linux/arm64]
         exclude:
           - os: windows-latest
 
@@ -99,26 +99,33 @@ jobs:
         run: |
           echo "PIGZ_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
           echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
-          echo "RELEASE_ARTIFACT=$(echo ${{ matrix.os }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
+          if [[ "${{ matrix.os }}"== *"windows"* ]]; then
+            echo "RELEASE_ARTIFACT=$(echo windows)" >> "$GITHUB_OUTPUT"
+            echo "RELEASE_ARTIFACT=$(echo windows)"
+          else
+            echo "RELEASE_ARTIFACT=$(echo ${{ matrix.arch }} | tr '/' '-')" >> "$GITHUB_OUTPUT"
+            echo "RELEASE_ARTIFACT=$(echo ${{ matrix.arch }} | tr '/' '-')"
+          fi
 
       - name: Create artifact dir
         run: mkdir -p artifacts
 
       - name: Pigz build
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         uses: docker/build-push-action@v5
         with:
           load: true
           context: scripts
           file: scripts/Dockerfile.pigz
           tags: linux/pigz:latest
-          platforms: linux/amd64,linux/arm64
-          build-args: PigzVersion=${{ steps.tags.outputs.PIGZ_TAG }}
+          platforms: ${{ matrix.arch }}
+          build-args: PigzVersion=${{ steps.releases.outputs.PIGZ_TAG }}
 
       - name: Inspect and extract artifacts
+        if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
           docker image inspect linux/pigz:latest
-          docker run --rm --platform linux/amd64 -v $GITHUB_WORKSPACE/artifacts:/export linux/pigz:latest bash -c 'cp -rv /builder/*.tar.gz /export/'
-          docker run --rm --platform linux/arm64 -v $GITHUB_WORKSPACE/artifacts:/export linux/pigz:latest bash -c 'cp -rv /builder/*.tar.gz /export/'
+          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export linux/pigz:latest bash -c 'cp -rv /builder/*.tar.gz /export/'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
