@@ -195,7 +195,7 @@ jobs:
 
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -366,7 +366,7 @@ jobs:
 
       - name: Log in with Azure
         if: steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
