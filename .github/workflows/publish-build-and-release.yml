@@ -198,6 +198,7 @@ jobs:
       #       These are unofficial periodic release of different tools with extra configuration than the official ons.
       #       Included are:
       #         * [crun](https://github.com/containers/crun)
+      #         * [pigz](https://github.com/madler/pigz)
 
       #       ## Crun
       #       It is build with wasm support and only for the amd64/arm64 arch.
@@ -206,5 +207,10 @@ jobs:
       #       The libs in the archive need to be added to your system LIBs PATH.
       #       See these [instructions](https://blog.andrewbeacock.com/2007/10/how-to-add-shared-libraries-to-linuxs.html) for how-to do so.
       #       Also the package libyajl2 is requiered.
+
+      #       ## Pigz
+      #       Static linked binary for x86 (Linux & Windows) and arm (Linux only) that does gzip compression with multithredding.
+      #       This release was build at [crun@${{ steps.metadata.outputs.PIGZ_REPO_HASH }}](https://github.com/madler/pigz/tree/${{ steps.metadata.outputs.PIGZ_REPO_HASH }})
+
       #     token: ${{ secrets.GITHUB_TOKEN }}
       #     files: artifacts/*

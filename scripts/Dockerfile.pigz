@@ -11,8 +11,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 WORKDIR /builder
 RUN git clone --branch ${Pigzversion} https://github.com/madler/pigz.git
 RUN cd pigz \
-    && make -j $(nproc) pigz \
+    && make -j $(nproc) \
     && ./pigz --version \
-    && tar czvf "pigz-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" pigz pigz.pdf README
+    && tar czvf "pigz-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" pigz unpigz pigz.pdf README
 
 RUN cp pigz/pigz*.tar.gz .
