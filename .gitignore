@@ -1,1 +1,6 @@
 tmp
+http-get-push/terraform/builds
+http-get-push/terraform/.terraform.lock.hcl
+http-get-push/terraform/.terraform
+http-get-push/go-src/http-getty
+http-get-push/terraform/backend.tf
