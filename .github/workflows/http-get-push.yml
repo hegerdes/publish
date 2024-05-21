@@ -1,0 +1,37 @@
+name: Build and deploy Lambda function
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy-lambda:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-central-1
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up AWS OIDC authentication
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
+          role-session-name: GitHubActions
+          role-duration-seconds: 300
+
+      - name: Zip the Lambda function
+        working-directory: http-get-push/node-src
+        run: zip function.zip *
+
+      - name: Deploy the Lambda function
+        uses: appleboy/lambda-action@v0.2.0
+        with:
+          aws_region: ${{ env.AWS_REGION }}
+          function_name: http-get-push
+          zip_file: http-get-push/node-src/function.zip
