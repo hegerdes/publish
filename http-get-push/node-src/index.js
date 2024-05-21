@@ -76,7 +76,7 @@ const handleRequest = async (queryParams, headers) => {
         const upstream_res = await makeRequest(target, options, payload)
 
         // Rewrite status because Hashicorp's stupids way of handling status codes
-        const status = target.includes('talos') && upstream_res.status >= 200 && out.status < 300 ? 200 : out.status
+        const status = target.includes('talos') && upstream_res.status >= 200 && upstream_res.status < 300 ? 200 : upstream_res.status
         return { status: status, data: upstream_res.data.toString(), headers: upstream_res.headers }
     }
     catch (error) {
