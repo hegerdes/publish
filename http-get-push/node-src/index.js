@@ -15,10 +15,10 @@ exports.handler = async (event, context) => {
     });
 
     console.log("Got lambda request")
-    let out = await handleRequest(event.queryStringParameters || {}, event.headers)
+    const out = await handleRequest(event.queryStringParameters || {}, event.headers)
     return {
         // Rewrite status because Hashicorp's stupids way of handling status codes
-        statusCode: out.status >= 200 && out.status < 300 ? 200 : out.status,
+        statusCode: out.status,
         body: out.data,
         headers: { 'Content-Type': 'application/json' }
     };
@@ -34,11 +34,9 @@ const server = http.createServer(async (req, res) => {
     });
 
     console.log('Incoming request from:', req.socket.remoteAddress);
-    const queryObject = url.parse(req.url, true).query;
 
-    let out = await handleRequest(queryObject, req.headers);
-    // Rewrite status because Hashicorp's stupids way of handling status codes
-    res.statusCode = out.status >= 200 && out.status < 300 ? 200 : out.status;
+    const out = await handleRequest(url.parse(req.url, true).query, req.headers);
+    res.statusCode = out.status;
     res.setHeader('Content-Type', out.headers['content-type'] || 'application/json');
     res.end(out.data);
 
@@ -74,8 +72,12 @@ const handleRequest = async (queryParams, headers) => {
         delete headers['X-Forwarded-Proto']
         const options = { method: method, headers: { ...headers, 'Content-Length': payload.length } }
 
+        console.log('Making request to:', target)
         const upstream_res = await makeRequest(target, options, payload)
-        return { status: upstream_res.status, data: upstream_res.data.toString(), headers: upstream_res.headers }
+
+        // Rewrite status because Hashicorp's stupids way of handling status codes
+        const status = target.includes('talos') && upstream_res.status >= 200 && out.status < 300 ? 200 : out.status
+        return { status: status, data: upstream_res.data.toString(), headers: upstream_res.headers }
     }
     catch (error) {
         console.error('Error:', error)
