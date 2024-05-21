@@ -23,7 +23,7 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_IAM_ROLE_ARN }}
           role-session-name: GitHubActions
-          role-duration-seconds: 300
+          role-duration-seconds: 900
 
       - name: Zip the Lambda function
         working-directory: http-get-push/node-src
