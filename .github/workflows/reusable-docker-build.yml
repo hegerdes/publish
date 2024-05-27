@@ -147,8 +147,8 @@ jobs:
       - name: Set ENVs
         id: env-setup
         run: |
-          export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAMES%%,*}"
-          export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAGS%%,*}"
+          export DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAMES%%,*}"
+          export DOCKER_IMAGE_TAG="${DOCKER_IMAGE_TAGS%%,*}"
           echo "DOCKER_IMAGE=${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
@@ -233,9 +233,9 @@ jobs:
         if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         continue-on-error: true
         run: |
-            az logout
-            az cache purge
-            az account clear
+          az logout
+          az cache purge
+          az account clear
 
   scan-image:
     runs-on: ${{ inputs.runner }}
@@ -251,8 +251,8 @@ jobs:
       - name: Set ENVs
         id: env-setup
         run: |
-          export DOCKER_IMAGE_NAME=${DOCKER_IMAGE_NAMES%%,*}"
-          export DOCKER_IMAGE_TAG=${DOCKER_IMAGE_TAGS%%,*}"
+          export DOCKER_IMAGE_NAME="${DOCKER_IMAGE_NAMES%%,*}"
+          export DOCKER_IMAGE_TAG="${DOCKER_IMAGE_TAGS%%,*}"
           echo "DOCKER_IMAGE=${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}" >> "$GITHUB_OUTPUT"
           for MY_VAR in $(echo "${{ inputs.extra-envs }}" | tr ";" "\n"); do
             echo "$MY_VAR" >> $GITHUB_ENV
@@ -280,7 +280,7 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.11"
 
       - name: Run checkov
         id: checkov_run
@@ -305,7 +305,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         continue-on-error: true
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
 
   sign-image:
     runs-on: ${{ inputs.runner }}
@@ -419,6 +419,6 @@ jobs:
         if: (success() || failure()) && steps.env-setup.outputs.AZ_LOGIN_SET == 'yes'
         continue-on-error: true
         run: |
-            az logout
-            az cache purge
-            az account clear
+          az logout
+          az cache purge
+          az account clear
