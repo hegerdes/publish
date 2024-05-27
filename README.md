@@ -1,4 +1,4 @@
-# Publish
+# Helper-Suite
 Contains different assets and binaries for shared projects.
 
 ## Content
