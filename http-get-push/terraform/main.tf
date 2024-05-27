@@ -26,7 +26,7 @@ locals {
     status      = "active"
     managed-by  = "terraform"
     env         = "production"
-    repository  = "https://github.com/hegerdes/publish"
+    repository  = "https://github.com/hegerdes/helper-suite"
   }
 }
 
@@ -75,7 +75,7 @@ resource "aws_iam_role" "github_actions" {
 
 resource "aws_iam_policy" "github_actions" {
   name        = "github-actions-http-get-push"
-  description = "Grant Github Actions the ability to push the labda code from hegerdes/publish"
+  description = "Grant Github Actions the ability to push the labda code from hegerdes/helper-suite"
   policy      = data.aws_iam_policy_document.github_actions.json
   tags        = local.tags
 }
@@ -99,7 +99,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:hegerdes/publish:*"]
+      values   = ["repo:hegerdes/helper-suite:*"]
     }
   }
 }
