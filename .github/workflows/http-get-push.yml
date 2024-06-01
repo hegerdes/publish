@@ -3,6 +3,8 @@ name: Build and deploy Lambda function
 on:
   push:
     branches: [main]
+    paths:
+      - "http-get-push/**"
 
 permissions:
   contents: read
