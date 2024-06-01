@@ -3,6 +3,7 @@ name: Build and Release
 on:
   push:
     tags: ["*"]
+  workflow_dispatch:
   schedule:
     - cron: "1 0 1 * *"
 

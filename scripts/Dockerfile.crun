@@ -1,4 +1,4 @@
-FROM debian:bullseye
+FROM debian:bookworm
 
 # Install dev deps
 RUN apt-get update && apt-get install -y \
@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y \
     golang-github-checkpoint-restore-go-criu-dev
 
 # Build Args
-ARG WasmEdgeApiVersion=3
+ARG WasmEdgeApiVersion=0.1.0
 ARG CrunVersion=main
 
 # Install wasmedge
@@ -26,8 +26,8 @@ RUN source $HOME/.wasmedge/env \
     && ./configure --with-wasmedge \
     && make -j $(nproc) \
     && mkdir -p wasmlibs \
-    && cp $HOME/.wasmedge/lib/libwasmedge.so.0.0.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.0.0.${WasmEdgeApiVersion} \
-    && ln -s wasmlibs/libwasmedge.so.0.0.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.0 \
+    && cp $HOME/.wasmedge/lib/libwasmedge.so.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.${WasmEdgeApiVersion} \
+    && ln -s wasmlibs/libwasmedge.so.${WasmEdgeApiVersion} wasmlibs/libwasmedge.so.0 \
     && ln -s wasmlibs/libwasmedge.so.0 wasmlibs/libwasmedge.so \
     && tar czvf "crun-$(git rev-parse --short HEAD)_$(uname -m).tar.gz" crun COPYING NEWS README.md wasmlibs/* \
     && if [ "$(uname -m)" = "x86_64" ]; then ./crun --version; fi
