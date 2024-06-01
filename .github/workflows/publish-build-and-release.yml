@@ -112,8 +112,9 @@ jobs:
 
       - name: Generate artifact attestation
         uses: actions/attest-build-provenance@v1
+        continue-on-error: true
         with:
-          subject-path: artifacts/wasm-crun-linux*
+          subject-path: artifacts/crun*
 
       - name: Release
         id: release

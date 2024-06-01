@@ -1,8 +1,8 @@
 FROM debian:bookworm
 
 # Install dev deps
-RUN apt-get update && apt-get install -y \
-    make curl git gcc build-essential pkgconf libtool libsystemd-dev \
+RUN apt-get update -qq && apt-get install -y -qq \
+    make curl git gcc build-essential pkgconf m4 libtool libsystemd-dev \
     libprotobuf-c-dev libcap-dev libseccomp-dev libyajl-dev libyajl2 \
     libprotobuf-c-dev protobuf-c-compiler protobuf-compiler libgcrypt20-dev \
     python3-protobuf go-md2man libtool autoconf python3 automake \
