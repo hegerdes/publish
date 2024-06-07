@@ -17,7 +17,6 @@ exports.handler = async (event, context) => {
     console.log("Got lambda request")
     const out = await handleRequest(event.queryStringParameters || {}, event.headers)
     return {
-        // Rewrite status because Hashicorp's stupids way of handling status codes
         statusCode: out.status,
         body: out.data,
         headers: { 'Content-Type': 'application/json' }
@@ -75,9 +74,7 @@ const handleRequest = async (queryParams, headers) => {
         console.log('Making request to:', target)
         const upstream_res = await makeRequest(target, options, payload)
 
-        // Rewrite status because Hashicorp's stupids way of handling status codes
-        const status = target.includes('talos') && upstream_res.status >= 200 && upstream_res.status < 300 ? 200 : upstream_res.status
-        return { status: status, data: upstream_res.data.toString(), headers: upstream_res.headers }
+        return { status: upstream_res.status, data: upstream_res.data.toString(), headers: upstream_res.headers }
     }
     catch (error) {
         console.error('Error:', error)
