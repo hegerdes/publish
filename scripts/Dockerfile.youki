@@ -1,0 +1,21 @@
+FROM debian:bookworm
+
+# Install dev deps
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+RUN apt-get update -qq && apt-get install -y -qq \
+    make wget curl git gcc build-essential pkgconf m4 libtool \
+    pkg-config libsystemd-dev libdbus-glib-1-dev libzstd-dev \
+    libelf-dev libseccomp-dev libclang-dev lsb-release
+
+RUN curl --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to /usr/bin
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+# Build Args
+ARG YoukiVersion=main
+ENV TARGET=x86_64-unknown-linux-gnu
+ENV PATH="/root/.cargo/bin:${PATH}"
+WORKDIR /builder
+RUN git clone --branch ${YoukiVersion} --recurse-submodules https://github.com/containers/youki.git
+RUN cd youki \
+    && sed -i 's|{{ cwd }}/scripts/build.sh -o {{ cwd }} -r -c youki|{{ cwd }}/scripts/build.sh -o {{ cwd }} -r -c youki -f wasm-wasmedge|g' justfile \
+    && just youki-release
