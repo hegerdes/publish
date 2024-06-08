@@ -123,7 +123,7 @@ jobs:
       - name: Inspect and extract artifacts
         run: |
           docker image inspect ${{ matrix.arch }}/wasmyouki:latest
-          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmyouki bash -c 'cp -rav /builder/youki/youki /export/youki-${{ matrix.arch }}'
+          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmyouki bash -c 'cp -rav /builder/youki/youki /export/youki-${{ steps.metadata.outputs.RELEASE_ARTIFACT }}'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -186,6 +186,12 @@ jobs:
         continue-on-error: true
         with:
           subject-path: artifacts/crun*
+
+      - name: Generate artifact attestation
+        uses: actions/attest-build-provenance@v1
+        continue-on-error: true
+        with:
+          subject-path: artifacts/youki*
 
       - name: Release
         id: release
