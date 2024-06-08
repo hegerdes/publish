@@ -16,6 +16,7 @@ jobs:
   Build-Crun:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [linux/amd64, linux/arm64]
     steps:
@@ -74,6 +75,7 @@ jobs:
   Build-Youki:
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
         arch: [linux/amd64, linux/arm64]
     steps:
@@ -121,7 +123,7 @@ jobs:
       - name: Inspect and extract artifacts
         run: |
           docker image inspect ${{ matrix.arch }}/wasmyouki:latest
-          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmyouki bash -c 'cp -rav /builder/youki/youki /export/'
+          docker run --rm --platform ${{ matrix.arch }} -v $GITHUB_WORKSPACE/artifacts:/export ${{ matrix.arch }}/wasmyouki bash -c 'cp -rav /builder/youki/youki /export/youki-${{ matrix.arch }}'
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
