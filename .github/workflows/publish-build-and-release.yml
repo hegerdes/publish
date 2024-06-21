@@ -6,8 +6,8 @@ on:
     tags: ["*"]
   schedule:
     - cron: "1 0 1 * *"
-  pull_request:
-    branches: [main]
+  # pull_request:
+  #   branches: [main]
 
 permissions:
   contents: write
