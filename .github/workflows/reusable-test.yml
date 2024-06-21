@@ -1,0 +1,36 @@
+name: Test reusables
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/**"
+
+permissions:
+  contents: read
+  id-token: write
+  packages: write
+
+jobs:
+  reusable-test-docker:
+    uses: ./.github/workflows/reusable-docker-build.yml
+    with:
+      build-name: ghcr.io/${{ github.repository_owner }}/helper-suite
+      build-tags: latest
+      build-labels: MAINTAINER=${{ github.repository_owner }}
+      push: true
+      build-dockerfile: tests/Dockerfile
+      extra-commands: echo "Your commands here"
+
+  reusable-test-helm:
+    uses: ./.github/workflows/reusable-helm-package.yml
+    with:
+      chart-sources-dir: tests/charts/demo
+      chart-test-config-dir: tests/charts
+      chart-publish: false
+      chart-release-version: "0.1.0"
+      extra-commands: echo "Your commands here"

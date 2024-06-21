@@ -1,0 +1,28 @@
+Remote: origin
+TargetBranch: main
+Since: HEAD
+BuildID:
+LintConf: lintconf.yaml
+ChartYamlSchema: chart_schema.yaml
+ValidateMaintainers: true
+ValidateChartSchema: true
+ValidateYaml: true
+AdditionalCommands: []
+CheckVersionIncrement: false
+ProcessAllCharts: false
+Charts: []
+ChartRepos: []
+ChartDirs: [charts]
+ExcludedCharts: []
+HelmExtraArgs:
+HelmRepoExtraArgs: []
+HelmDependencyExtraArgs: []
+Debug: false
+Upgrade: true
+SkipMissingValues: false
+SkipCleanUp: false
+Namespace:
+ReleaseLabel:
+ExcludeDeprecated: false
+KubectlTimeout: 30s
+PrintLogs: true
