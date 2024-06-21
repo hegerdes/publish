@@ -1,4 +1,4 @@
-name: Build and deploy Lambda function
+name: Test reusables
 
 on:
   push:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   reusable-test-docker:
-    uses: hegerdes/helper-suite/.github/workflows/reusable-docker-build.yml@${{ github.sha }}
+    uses: hegerdes/helper-suite/.github/workflows/reusable-docker-build.yml@${{github.sha}}
     with:
       build-name: ghcr.io/${{ github.repository_owner }}/helper-suite
       build-tags: latest
@@ -27,7 +27,7 @@ jobs:
       extra-commands: echo "Your commands here"
 
   reusable-test-helm:
-    uses: hegerdes/helper-suite/.github/workflows/reusable-helm-package.yml@${{ github.sha }}
+    uses: hegerdes/helper-suite/.github/workflows/reusable-helm-package.yml@${{github.sha}}
     with:
       chart-sources-dir: tests/charts
       chart-publish: false
