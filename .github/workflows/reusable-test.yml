@@ -27,7 +27,7 @@ jobs:
       extra-commands: echo "Your commands here"
 
   reusable-test-helm:
-    uses: .github/workflows/reusable-helm-package.yml
+    uses: ./.github/workflows/reusable-helm-package.yml
     with:
       chart-sources-dir: tests/charts
       chart-publish: false
