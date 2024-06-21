@@ -38,6 +38,16 @@ on:
         type: boolean
         default: true
         required: false
+      kubeconform-test:
+        description: "If charts should be validated with kubernetes api definitions"
+        type: boolean
+        default: true
+        required: false
+      kubeconform-extra-args:
+        description: "Extra args passed to kubeconform. See https://github.com/yannh/kubeconform?tab=readme-ov-file"
+        type: string
+        default: "--strict --ignore-missing-schemas "
+        required: false
       chart-test-extra-args:
         description: "Extra args passed to chart-testing install"
         type: string
@@ -137,6 +147,10 @@ jobs:
         with:
           python-version: "3.11"
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "^1.22.2"
+
       - name: Set up chart-testing
         uses: helm/chart-testing-action@v2.6.1
 
@@ -153,6 +167,14 @@ jobs:
         run: |
           ct lint --target-branch ${{ github.event.repository.default_branch }} \
             --charts ${{ inputs.chart-sources-dir }} ${{ inputs.chart-lint-extra-args }}
+
+      - name: Run kubeconform
+        if: inputs.kubeconform-test
+        run: |
+          go install github.com/yannh/kubeconform/cmd/kubeconform@latest
+          helm template demo ${{ inputs.chart-sources-dir }} > /tmp/k8s-manifests.yaml
+          kubeconform ${{ inputs.kubeconform-extra-args }} /tmp/k8s-manifests.yaml
+          echo "Manifests are valid!"
 
       - name: Create kind cluster ${{ inputs.chart-test-kind-version }}
         if: inputs.chart-test
