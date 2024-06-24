@@ -56,7 +56,7 @@ jobs:
         run: mkdir -p artifacts
 
       - name: Crun build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           load: true
           context: scripts
@@ -115,7 +115,7 @@ jobs:
         run: mkdir -p artifacts
 
       - name: youki build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           load: true
           context: scripts
