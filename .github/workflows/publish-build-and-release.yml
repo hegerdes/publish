@@ -56,7 +56,7 @@ jobs:
       - name: Create artifact dir
         run: mkdir -p artifacts
 
-      - name: Crun build
+      - name: Build crun
         uses: docker/build-push-action@v6
         with:
           load: true
@@ -94,8 +94,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-        with:
-          version: "v0.14.1"
 
       - name: Get latest publish versions
         id: releases
@@ -119,7 +117,7 @@ jobs:
       - name: Create artifact dir
         run: mkdir -p artifacts
 
-      - name: youki build
+      - name: Build youki
         uses: docker/build-push-action@v6
         with:
           load: true
@@ -127,6 +125,7 @@ jobs:
           file: scripts/Dockerfile.youki
           tags: ${{ matrix.arch }}/wasmyouki:latest
           platforms: ${{ matrix.arch }}
+          shm-size: 12g
           build-args: YoukiVersion=${{ steps.releases.outputs.YOUKI_TAG }}
 
       - name: Inspect and extract artifacts

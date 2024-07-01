@@ -14,7 +14,7 @@ RUN apt-get update -qq && apt-get install -y -qq \
     libseccomp-dev      \
     libclang-dev
 
-RUN curl -sSf https://just.systems/install.sh | bash -s -- --to /usr/bin
+# RUN curl -sSf https://just.systems/install.sh | bash -s -- --to /usr/bin
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y
 
 # Build Args
@@ -24,6 +24,4 @@ WORKDIR /builder
 RUN git clone --branch ${YoukiVersion} --recurse-submodules https://github.com/containers/youki.git
 RUN cd youki \
     # && just youki-release \
-    && ./scripts/build.sh -o . -r -f wasm-wasmedge \
-    && ./youki -h \
-    && ./youki info
+    && ./scripts/build.sh -o . -r -f wasm-wasmedge
