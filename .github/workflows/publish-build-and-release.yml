@@ -174,12 +174,11 @@ jobs:
           ref: ${{ steps.releases.outputs.YOUKI_TAG }}
 
       - name: Get publish hash-data
-        working-directory: crun
         id: metadata
         run: |
-          echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "YOUKI_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-          echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
+          cd $GITHUB_WORKSPACE/crun && echo "CRUN_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          cd $GITHUB_WORKSPACE/youki && echo "YOUKI_REPO_HASH=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+          cd $GITHUB_WORKSPACE && echo "RELEASE_VERSION=$(date +'%Y.%m.%d')" >> "$GITHUB_OUTPUT"
 
       - name: Download artifatcs
         uses: actions/download-artifact@v4
@@ -190,8 +189,12 @@ jobs:
         working-directory: artifacts
         run: |
           ls -la
-          for i in wasm-crun*; do echo "Found ${i}"; mv $i/*.tar.gz .; rm -rf $i; done
-          for file in wasm-youki*; do mv -- "$file" "youki-${{ steps.metadata.outputs.YOUKI_REPO_HASH }}-${file:17}"; done
+          # Moving crun
+          for i in wasm-crun*; do echo "Crun: ${i}"; mv $i/*.tar.gz .; rm -rf $i; done
+          # Rename youki
+          for i in wasm-youki*; do echo "Youki: ${i}"; mv -- "$i" "youki-${{ steps.metadata.outputs.YOUKI_REPO_HASH }}-${i:17}"; done
+          # Archive youki
+          for i in youki*; do tar -cvzf $i.tar.gz $i; rm $i; done
           ls -la
 
       - name: Generate artifact attestation
