@@ -18,7 +18,8 @@ permissions:
 
 jobs:
   Build-Crun:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
@@ -76,8 +77,10 @@ jobs:
           name: wasm-crun-${{ steps.metadata.outputs.RELEASE_ARTIFACT }}
           path: artifacts/*
           retention-days: 60
+
   Build-Youki:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
