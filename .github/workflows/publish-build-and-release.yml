@@ -194,7 +194,7 @@ jobs:
           # Rename youki
           for i in wasm-youki*; do echo "Youki: ${i}"; mv -- "$i" "youki-${{ steps.metadata.outputs.YOUKI_REPO_HASH }}-${i:17}"; done
           # Archive youki
-          for i in youki*; do tar -cvzf $i.tar.gz $i; rm $i; done
+          for i in youki*; do tar -cvzf $i.tar.gz $i; rm -rf $i; done
           ls -la
 
       - name: Generate artifact attestation
