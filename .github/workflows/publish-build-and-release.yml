@@ -16,6 +16,10 @@ on:
 permissions:
   contents: write
 
+env:
+  # Download artefacts fails if summery is on
+  DOCKER_BUILD_NO_SUMMARY: "true"
+
 jobs:
   Build-Crun:
     runs-on: ubuntu-24.04
